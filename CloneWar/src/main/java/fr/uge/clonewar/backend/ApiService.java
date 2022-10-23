@@ -1,4 +1,4 @@
-package fr.uge.clonewar.api;
+package fr.uge.clonewar.backend;
 
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.Service;

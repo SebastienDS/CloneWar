@@ -1,6 +1,6 @@
-package fr.uge.clonewar.api.main;
+package fr.uge.clonewar.backend.main;
 
-import fr.uge.clonewar.api.ApiService;
+import fr.uge.clonewar.backend.ApiService;
 import io.helidon.config.Config;
 import io.helidon.openapi.OpenAPISupport;
 import io.helidon.webserver.Routing;
