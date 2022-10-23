@@ -66,6 +66,11 @@
         </dependency>
     </dependencies>
     <build>
+        <resources>
+            <resource>
+                <directory>frontend</directory>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
