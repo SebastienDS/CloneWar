@@ -1,4 +1,4 @@
-package fr.uge;
+package fr.uge.clonewar;
 
 public class Karp {
 
