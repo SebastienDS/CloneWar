@@ -22,8 +22,8 @@ public final class Main {
   private static Routing createRouting() {
     return Routing.builder()
         .register(OpenAPISupport.create())
-        .register("/", StaticContentSupport.create("/dist")) // frontend/dist
         .register("/api", new ApiService())
+        .register("/", StaticContentSupport.create("/dist")) // frontend/dist
         .build();
   }
 }
