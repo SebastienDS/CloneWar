@@ -16,14 +16,18 @@ public final class Main {
         .build()
         .start();
 
-    server.thenAccept(ws -> System.out.println("Server is up: http://localhost:" + ws.port() + "/index.html"));
+    server.thenAccept(ws -> System.out.println("Server is up: http://localhost:" + ws.port()));
   }
 
   private static Routing createRouting() {
+    var staticContent = StaticContentSupport.builder("/dist")
+        .welcomeFileName("index.html")
+        .build();
+
     return Routing.builder()
         .register(OpenAPISupport.create())
         .register("/api", new ApiService())
-        .register("/", StaticContentSupport.create("/dist")) // frontend/dist
+        .register("/", staticContent) // frontend/dist
         .build();
   }
 }
