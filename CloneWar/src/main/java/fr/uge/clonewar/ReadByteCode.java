@@ -8,11 +8,142 @@ import java.lang.constant.MethodTypeDesc;
 import java.lang.module.ModuleFinder;
 import java.lang.reflect.Modifier;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class ReadByteCode {
 
-    public static String opcodeToString(int opcode){
+    private int line;
+    private final HashMap<Integer, List<String>> map = new HashMap<>();
+
+    public ReadByteCode(){
+        map.put(line, new ArrayList<>());
+    }
+
+    @Override
+    public String toString() {
+        return map.keySet()
+                .stream()
+                .sorted()
+                .map(integer -> integer + " : " + map.get(integer))
+                .collect(Collectors.joining("\n"));
+    }
+
+    public static void main(String[] args) throws IOException {
+        var readByteCode = new ReadByteCode();
+        var finder = ModuleFinder.of(Path.of("simd.jar"));
+        var moduleReference = finder.findAll().stream().findFirst().orElseThrow();
+
+        try(var reader = moduleReference.open()) {
+            for(var filename: (Iterable<String>) reader.list()::iterator) {
+                if (!filename.endsWith(".class")) {
+                    continue;
+                }
+                System.out.println(filename);
+                try(var inputStream = reader.open(filename).orElseThrow()) {
+                    var classReader = new ClassReader(inputStream);
+                    classReader.accept(new ClassVisitor(Opcodes.ASM9) {
+
+                        private static String modifier(int access) {
+                            if (Modifier.isPublic(access)) {
+                                return "public";
+                            }
+                            if (Modifier.isPrivate(access)) {
+                                return "private";
+                            }
+                            if (Modifier.isProtected(access)) {
+                                return "protected";
+                            }
+                            return "";
+                        }
+
+                        @Override
+                        public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
+                            System.err.println("class " + modifier(access) + " " + name + " " + superName + " " + (interfaces != null? Arrays.toString(interfaces): ""));
+                        }
+
+                        @Override
+                        public RecordComponentVisitor visitRecordComponent(String name, String descriptor, String signature) {
+                            System.err.println("  component " + name + " " + ClassDesc.ofDescriptor(descriptor).displayName());
+                            return null;
+                        }
+
+                        @Override
+                        public FieldVisitor visitField(int access, String name, String descriptor, String signature, Object value) {
+                            return null;
+                        }
+
+                        @Override
+                        public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
+                            System.err.println("  method " + modifier(access) + " " + name + " " + MethodTypeDesc.ofDescriptor(descriptor).displayDescriptor() + " " + signature);
+                            return new MethodVisitor(Opcodes.ASM9) {
+                                @Override
+                                public void visitInsn(int opcode) {
+                                    readByteCode.add(opcodeToString(opcode));
+                                }
+
+                                @Override
+                                public void visitMethodInsn(int opcode, String owner, String name, String descriptor, boolean isInterface) {
+                                    readByteCode.add(opcodeToString(opcode));
+                                }
+
+                                @Override
+                                public void visitIntInsn(int opcode, int operand){
+                                    readByteCode.add(opcodeToString(opcode) + " " + operand);
+                                }
+
+                                @Override
+                                public void visitVarInsn(int opcode, int varIndex){
+                                    readByteCode.add(opcodeToString(opcode) + " " +varIndex);
+                                }
+
+                                @Override
+                                public void visitTypeInsn(int opcode, String type){
+                                    readByteCode.add(opcodeToString(opcode));
+                                }
+
+                                @Override
+                                public void visitFieldInsn(int opcode, String owner, String name, String descriptor){
+                                    readByteCode.add(opcodeToString(opcode));
+                                }
+
+                                @Override
+                                public void visitJumpInsn(int opcode, Label label){
+                                    readByteCode.add(opcodeToString(opcode));
+                                }
+
+                                @Override
+                                public void visitLineNumber(int line, Label label){
+                                    readByteCode.setLine(line);
+                                    readByteCode.init(line);
+                                }
+                            };
+                        }
+                     },0);
+
+                }
+            }
+        }
+        System.out.println(readByteCode);
+
+    }
+
+    private void init(int line) {
+        map.putIfAbsent(line, new ArrayList<>());
+    }
+
+    private void setLine(int line) {
+        this.line = line;
+    }
+
+    private void add(String opcodeToString) {
+        map.get(line).add(opcodeToString);
+    }
+
+    private static String opcodeToString(int opcode){
         return switch (opcode) {
             case Opcodes.NOP -> "NOP";
             case Opcodes.ACONST_NULL -> "CONST_NULL";
@@ -168,96 +299,5 @@ public class ReadByteCode {
             case Opcodes.I2C -> "I2C";
             default -> throw new IllegalStateException("Unexpected value: " + opcode);
         };
-    }
-
-
-    public static void main(String[] args) throws IOException {
-        var finder = ModuleFinder.of(Path.of("simd.jar"));
-        var moduleReference = finder.findAll().stream().findFirst().orElseThrow();
-
-        try(var reader = moduleReference.open()) {
-            for(var filename: (Iterable<String>) reader.list()::iterator) {
-                if (!filename.endsWith(".class")) {
-                    continue;
-                }
-                System.out.println(filename);
-                try(var inputStream = reader.open(filename).orElseThrow()) {
-                    var classReader = new ClassReader(inputStream);
-                    classReader.accept(new ClassVisitor(Opcodes.ASM9) {
-
-                        private static String modifier(int access) {
-                            if (Modifier.isPublic(access)) {
-                                return "public";
-                            }
-                            if (Modifier.isPrivate(access)) {
-                                return "private";
-                            }
-                            if (Modifier.isProtected(access)) {
-                                return "protected";
-                            }
-                            return "";
-                        }
-
-                        @Override
-                        public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
-                            System.err.println("class " + modifier(access) + " " + name + " " + superName + " " + (interfaces != null? Arrays.toString(interfaces): ""));
-                        }
-
-                        @Override
-                        public RecordComponentVisitor visitRecordComponent(String name, String descriptor, String signature) {
-                            System.err.println("  component " + name + " " + ClassDesc.ofDescriptor(descriptor).displayName());
-                            return null;
-                        }
-
-                        @Override
-                        public FieldVisitor visitField(int access, String name, String descriptor, String signature, Object value) {
-                            System.err.println("  field " + modifier(access) + " " + name + " " + ClassDesc.ofDescriptor(descriptor).displayName() + " " + signature);
-                            return null;
-                        }
-
-                        @Override
-                        public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
-                            System.err.println("  method " + modifier(access) + " " + name + " " + MethodTypeDesc.ofDescriptor(descriptor).displayDescriptor() + " " + signature);
-                            return new MethodVisitor(Opcodes.ASM9) {
-                                @Override
-                                public void visitInsn(int opcode) {
-                                    System.err.println(opcodeToString(opcode));
-                                }
-
-                                @Override
-                                public void visitMethodInsn(int opcode, String owner, String name, String descriptor, boolean isInterface) {
-                                    System.err.println(opcodeToString(opcode) + " " + name);
-                                }
-
-                                @Override
-                                public void visitIntInsn(int opcode, int operand){
-                                    System.err.println(opcodeToString(opcode) + " " + operand);
-                                }
-
-                                @Override
-                                public void visitVarInsn(int opcode, int varIndex){
-                                    System.err.println(opcodeToString(opcode) + " " +varIndex);
-                                }
-
-                                @Override
-                                public void visitTypeInsn(int opcode, String type){
-                                    System.err.println(opcodeToString(opcode) + " " +  type);
-                                }
-
-                                @Override
-                                public void visitFieldInsn(int opcode, String owner, String name, String descriptor){
-                                    System.err.println(opcodeToString(opcode) + " " + name);
-                                }
-
-                                @Override
-                                public void visitJumpInsn(int opcode, Label label){
-                                    System.err.println(opcodeToString(opcode));
-                                }
-                            };
-                        }
-                    }, 0);
-                }
-            }
-        }
     }
 }
