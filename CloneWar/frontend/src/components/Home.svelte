@@ -10,18 +10,17 @@
   $: canSubmit = mainJar !== null && sourceJar != null;
 
   const submit = () => {
-    const dataArray = new FormData();
-    dataArray.append("mainJar", mainJar);
-    dataArray.append("sourceJar", sourceJar);
+    const formData = new FormData();
+    formData.append(mainJar, mainJar);
+    formData.append(sourceJar, sourceJar);
 
-    fetch("/api/jars", {
+    const options = {
       method: "POST",
-      headers: {
-        "Content-Type": "multipart/form-data"
-      },
-      body: dataArray
-    })
-    .then(res => console.log(res.json()))
+      body: formData
+    }
+
+    fetch("/api/jars", options)
+    .then(res => console.log(res))
     .catch(error => console.log(error))
   }
 </script>
