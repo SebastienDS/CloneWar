@@ -35,6 +35,11 @@
       <version>3.0.1</version>
     </dependency>
     <dependency>
+      <groupId>io.helidon.media</groupId>
+      <artifactId>helidon-media-multipart</artifactId>
+      <version>3.0.1</version>
+    </dependency>
+    <dependency>
       <groupId>io.helidon.dbclient</groupId>
       <artifactId>helidon-dbclient</artifactId>
       <version>3.0.1</version>

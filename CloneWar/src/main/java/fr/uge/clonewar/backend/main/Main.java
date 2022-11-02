@@ -2,6 +2,8 @@ package fr.uge.clonewar.backend.main;
 
 import fr.uge.clonewar.backend.ApiService;
 import io.helidon.config.Config;
+import io.helidon.media.jsonp.JsonpSupport;
+import io.helidon.media.multipart.MultiPartSupport;
 import io.helidon.openapi.OpenAPISupport;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.WebServer;
@@ -13,6 +15,8 @@ public final class Main {
     var config = Config.create();
     var server = WebServer.builder(createRouting())
         .config(config.get("server"))
+        .addMediaSupport(MultiPartSupport.create())
+        .addMediaSupport(JsonpSupport.create())
         .build()
         .start();
 
