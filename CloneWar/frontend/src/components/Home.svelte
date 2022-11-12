@@ -19,7 +19,7 @@
       body: formData
     }
 
-    fetch("/api/jars", options)
+    fetch("/api/analyze", options)
     .then(res => console.log(res))
     .catch(error => console.log(error))
   }
