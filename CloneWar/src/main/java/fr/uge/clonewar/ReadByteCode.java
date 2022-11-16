@@ -1,5 +1,6 @@
 package fr.uge.clonewar;
 
+import fr.uge.clonewar.backend.InstructionDB;
 import org.objectweb.asm.*;
 
 import java.io.IOException;
@@ -34,7 +35,6 @@ public class ReadByteCode {
 
     try (var reader = moduleReference.open()) {
       for (var filename: (Iterable<String>) reader.list()::iterator) {
-        System.out.println(filename);
         if (!filename.endsWith(".class")) {
           continue;
         }
@@ -57,12 +57,10 @@ public class ReadByteCode {
 
             @Override
             public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
-              System.err.println("class " + modifier(access) + " " + name + " " + superName + " " + (interfaces != null? Arrays.toString(interfaces): ""));
             }
 
             @Override
             public RecordComponentVisitor visitRecordComponent(String name, String descriptor, String signature) {
-              System.err.println("  component " + name + " " + ClassDesc.ofDescriptor(descriptor).displayName());
               return null;
             }
 
@@ -73,7 +71,6 @@ public class ReadByteCode {
 
             @Override
             public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
-              System.err.println("  method " + modifier(access) + " " + name + " " + MethodTypeDesc.ofDescriptor(descriptor).displayDescriptor() + " " + signature);
               return new MethodVisitor(Opcodes.ASM9) {
                 @Override
                 public void visitInsn(int opcode) {
@@ -127,8 +124,11 @@ public class ReadByteCode {
   public static void main(String[] args) throws IOException {
     var readByteCode = new ReadByteCode();
     readByteCode.analyze(Path.of("simd.jar"));
-    System.out.println(readByteCode);
-
+    var instructionDB = new InstructionDB();
+    instructionDB.createTable();
+    readByteCode.map.forEach(
+            (line, strings) -> instructionDB.add("cc", line, String.join("\n", strings).hashCode())
+    );
   }
 
   private void init(int line) {
