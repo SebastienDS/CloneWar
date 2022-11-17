@@ -1,5 +1,6 @@
 package fr.uge.clonewar.backend;
 
+import fr.uge.clonewar.Artefact;
 import fr.uge.clonewar.ReadByteCode;
 import io.helidon.common.configurable.ThreadPoolSupplier;
 import io.helidon.common.http.DataChunk;
@@ -12,22 +13,14 @@ import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
 import io.helidon.webserver.Service;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
+
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 
 public final class ApiService implements Service {
-
-  private record Artefact(Path main, Path source) {
-    public Artefact {
-      Objects.requireNonNull(main);
-      Objects.requireNonNull(source);
-    }
-  }
-
 
   private final FileStorage storage = new FileStorage();
   private final ExecutorService executor = ThreadPoolSupplier.create("multipart-thread-pool").get();
@@ -47,9 +40,11 @@ public final class ApiService implements Service {
 
           var readByteCode = new ReadByteCode();
           try {
-            readByteCode.analyze(artefact.main); // TODO: not working
-          } catch (IOException e) {
-            throw new UncheckedIOException(e);
+            readByteCode.analyze(artefact.main()); // TODO: not working
+          } catch (Exception e) {
+            System.out.println("Error " + e);
+            System.out.println(readByteCode);
+            throw new RuntimeException(e);
           }
 
           System.out.println("Done ! ");
@@ -60,9 +55,10 @@ public final class ApiService implements Service {
   }
 
   private Single<Artefact> downloadArtefact(ServerRequest request) {
+    System.out.println("Downloading ... ");
     return request.content().asStream(ReadableBodyPart.class)
         .map(part -> {
-          var path = storage.create(part.name());
+          var path = storage.create(part.filename());
           part.content().map(DataChunk::data)
               .flatMapIterable(Arrays::asList)
               .to(IoMulti.writeToFile(path)
@@ -70,7 +66,14 @@ public final class ApiService implements Service {
                   .build());
           return path;
         }).collectList()
-        .map(files -> new Artefact(files.get(0), files.get(1)));
+        .map(files -> {
+          try {
+            Thread.sleep(10_000);
+          } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+          }
+          return new Artefact(files.get(0), files.get(1));
+        });
   }
 
 }

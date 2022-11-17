@@ -4,15 +4,17 @@
   let mainJar = null;
   let sourceJar = null;
 
-  const setMainJar = (event) => mainJar = event.detail.filename;
-  const setSourceJar = (event) => sourceJar = event.detail.filename;
+  const setMainJar = (event) => mainJar = event.detail.file;
+  const setSourceJar = (event) => sourceJar = event.detail.file;
 
   $: canSubmit = mainJar !== null && sourceJar != null;
 
   const submit = () => {
     const formData = new FormData();
-    formData.append(mainJar, mainJar);
-    formData.append(sourceJar, sourceJar);
+    formData.append(mainJar, mainJar, mainJar.name);
+    formData.append(sourceJar, sourceJar, sourceJar.name);
+
+    console.log(mainJar, sourceJar);
 
     const options = {
       method: "POST",
@@ -31,10 +33,10 @@
   <div class="is-flex is-flex-direction-column is-align-items-center">
     <div class="is-flex">
       <div class="m-3">
-        <Dropzone on:filenameChanged={setMainJar}/>
+        <Dropzone on:fileChanged={setMainJar}/>
       </div>
       <div class="m-3">
-        <Dropzone on:filenameChanged={setSourceJar}/>
+        <Dropzone on:fileChanged={setSourceJar}/>
       </div>
     </div>
     

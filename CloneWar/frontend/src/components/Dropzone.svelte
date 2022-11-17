@@ -1,5 +1,5 @@
 <script>
-    import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher } from "svelte";
 
 
   let files = null;
@@ -7,15 +7,15 @@
   const dispatch = createEventDispatcher();
 
   const submitFile = () => {
-    dispatch("filenameChanged", {
-      filename: files[0].name
+    dispatch("fileChanged", {
+      file: files[0]
     });
   }
 </script>
 
 <div class="file has-name is-boxed" class:is-success="{files !== null}">
   <label class="file-label">
-    <input class="file-input" type="file" name="resume" bind:files on:change={submitFile}/>
+    <input class="file-input" type="file" bind:files on:change={submitFile}/>
     <span class="file-cta">
       <span class="file-icon">
         <i class="fas fa-upload" />
