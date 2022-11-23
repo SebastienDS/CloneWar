@@ -25,7 +25,11 @@ public class ReadByteCode implements Iterable<ReadByteCode.Tuple>{
 
   @Override
   public Iterator<Tuple> iterator() {
-    return map.entrySet().stream().flatMap(entry -> entry.getValue().stream().map(value -> new Tuple(entry.getKey(), value))).iterator();
+    return map.entrySet()
+            .stream()
+            .flatMap(entry -> entry.getValue().stream()
+                    .map(value -> new Tuple(entry.getKey(), value)))
+            .iterator();
   }
 
   @Override

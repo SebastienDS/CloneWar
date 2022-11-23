@@ -1,28 +1,30 @@
 package fr.uge.clonewar;
 
+import fr.uge.clonewar.backend.InstructionDB;
+
+import java.util.*;
+
 public class Karp {
 
-    //TODO: A MODIF
-    public static boolean rabinKarp(String str, String pattern){
-        var hashPattern = pattern.hashCode();
-        for (int i = 0; i < str.length() - pattern.length() + 1; i++) {
-            var subString =  str.substring(i, i + pattern.length());
-            var hash = subString.hashCode();
-            if(hash == hashPattern && subString.equals(pattern))
-                return true;
+    public static HashMap<Integer, Set<Integer>> rabinKarp(List<InstructionDB.Tuple> listTuple1, List<InstructionDB.Tuple> listTuple2){
+        var mapIndex = new HashMap<Integer, Set<Integer>>();
+        for (var tuple2: listTuple2) {
+            for(var tuple1: listTuple1){
+                if(tuple1.hash() == tuple2.hash()){
+                    mapIndex.computeIfAbsent(tuple2.line(), integer -> new HashSet<>()).add(tuple1.line());
+                }
+            }
         }
-        return false;
+        return mapIndex;
+
     }
 
     //pour les tests
     public static void main(String[] args) {
-        var s = "ccc";
-        var c = "ccc";
-        var a = "aac";
-        System.out.println(rabinKarp(s, c));
-        System.out.println(rabinKarp(s, a));
-        System.out.println(rabinKarp(a, "ac"));
-        System.out.println(rabinKarp(s, "ab"));
-        System.out.println(rabinKarp(s, "aaaa"));
+        var instructionDB = new InstructionDB();
+        var listHashDoc1 = instructionDB.getLineAndHash("cc");
+        var listHashDoc2 = instructionDB.getLineAndHash("cc2");
+
+        System.out.println(rabinKarp(listHashDoc1, listHashDoc2));
     }
 }

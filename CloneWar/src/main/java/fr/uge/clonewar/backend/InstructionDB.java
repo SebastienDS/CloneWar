@@ -2,10 +2,12 @@ package fr.uge.clonewar.backend;
 
 import fr.uge.clonewar.ReadByteCode;
 import io.helidon.dbclient.DbClient;
+import io.helidon.dbclient.DbRow;
 import io.helidon.dbclient.jdbc.JdbcDbClientProviderBuilder;
 
 import java.util.ArrayDeque;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Objects;
 
 
@@ -42,7 +44,19 @@ public class InstructionDB {
         })).await();
     }
 
-    private record Tuple(int line, int hash){}
+    public List<Tuple> getLineAndHash(String documentName) {
+        return dbClient.execute(exec -> exec.createQuery("SELECT line, hash FROM INSTRUCTION WHERE documentName = ?")
+                .addParam(documentName)
+                .execute()
+        ).map(dbRow -> new Tuple(dbRow.column("line").as(Integer.class), dbRow.column("hash").as(Integer.class)))
+                .collectList()
+                .exceptionally((t -> {
+            System.out.println(t.getMessage());
+            return null;
+        })).await();
+    }
+
+    public record Tuple(int line, int hash){}
 
     public void addToBase(ReadByteCode readByteCode) {
         var iterator = readByteCode.iterator();
@@ -57,7 +71,7 @@ public class InstructionDB {
                 hash = addHash(fifo, iterator, hash);
             }
         }
-        add("cc", peek(fifo).line, hash);
+        add("cc2", peek(fifo).line, hash);
         while (iterator.hasNext()){
             hash = rollingHash(fifo, iterator, hash);
         }
@@ -75,7 +89,7 @@ public class InstructionDB {
         assert lastElement != null;
         hash -= lastElement.hash;
         hash = addHash(fifo, iterator, hash);
-        add("cc", peek(fifo).line, hash);
+        add("cc2", peek(fifo).line, hash);
         return hash;
     }
 
