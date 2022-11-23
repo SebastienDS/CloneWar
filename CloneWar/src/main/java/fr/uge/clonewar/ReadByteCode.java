@@ -12,13 +12,20 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class ReadByteCode {
+public class ReadByteCode implements Iterable<ReadByteCode.Tuple>{
 
+  public record Tuple(int line, String opcode){}
   private int line;
   private final TreeMap<Integer, List<String>> map = new TreeMap<>();
+  private boolean isDouble = false;
 
   public ReadByteCode() {
     map.put(line, new ArrayList<>());
+  }
+
+  @Override
+  public Iterator<Tuple> iterator() {
+    return map.entrySet().stream().flatMap(entry -> entry.getValue().stream().map(value -> new Tuple(entry.getKey(), value))).iterator();
   }
 
   @Override
@@ -126,9 +133,7 @@ public class ReadByteCode {
     readByteCode.analyze(Path.of("simd.jar"));
     var instructionDB = new InstructionDB();
     instructionDB.createTable();
-    readByteCode.map.forEach(
-            (line, strings) -> instructionDB.add("cc", line, String.join("\n", strings).hashCode())
-    );
+    instructionDB.addToBase(readByteCode);
   }
 
   private void init(int line) {
@@ -136,10 +141,18 @@ public class ReadByteCode {
   }
 
   private void setLine(int line) {
+    if(map.containsKey(line)){
+      isDouble = true;
+      return;
+    }
+    isDouble = false;
     this.line = line;
   }
 
   private void add(String opcodeToString) {
+    if(isDouble){
+      return;
+    }
     map.get(line).add(opcodeToString);
   }
 

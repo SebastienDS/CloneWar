@@ -2,6 +2,7 @@ package fr.uge.clonewar;
 
 public class Karp {
 
+    //TODO: A MODIF
     public static boolean rabinKarp(String str, String pattern){
         var hashPattern = pattern.hashCode();
         for (int i = 0; i < str.length() - pattern.length() + 1; i++) {
