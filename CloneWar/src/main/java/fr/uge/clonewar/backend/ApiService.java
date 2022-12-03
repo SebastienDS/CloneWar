@@ -40,7 +40,7 @@ public final class ApiService implements Service {
 
           var readByteCode = new ReadByteCode();
           try {
-            readByteCode.analyze(artefact.main()); // TODO: not working
+            readByteCode.analyze(artefact.main());
           } catch (Exception e) {
             System.out.println("Error " + e);
             System.out.println(readByteCode);

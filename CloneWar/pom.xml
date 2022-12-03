@@ -69,6 +69,12 @@
       <artifactId>jackson-databind</artifactId>
       <version>2.13.0</version>
     </dependency>
+    <dependency>
+      <groupId>io.helidon.webclient</groupId>
+      <artifactId>helidon-webclient</artifactId>
+      <version>3.0.1</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
   <build>
     <resources>
