@@ -175,6 +175,8 @@
                   <excludes>
                     <exclude>**/module-info.class</exclude>
                     <exclude>META-INF/MANIFEST.MF</exclude>
+                    <exclude>node_modules</exclude>
+                    <exclude>node</exclude>
                   </excludes>
                 </filter>
               </filters>

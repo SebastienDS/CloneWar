@@ -2,7 +2,6 @@ package fr.uge.clonewar.backend;
 
 import fr.uge.clonewar.ReadByteCode;
 import io.helidon.dbclient.DbClient;
-import io.helidon.dbclient.DbRow;
 import io.helidon.dbclient.jdbc.JdbcDbClientProviderBuilder;
 
 import java.util.ArrayDeque;
@@ -62,22 +61,30 @@ public class InstructionDB {
 
   public void addToBase(ReadByteCode readByteCode) {
     Objects.requireNonNull(readByteCode);
-    var iterator = readByteCode.iterator();
-    if (!iterator.hasNext()) {
+    readByteCode.stream()
+        .forEach(entry -> addToBase(entry.getKey(), entry.getValue()));
+  }
+
+  private void addToBase(String filename, Iterator<ReadByteCode.Tuple> instructions) {
+    if (!instructions.hasNext()) {
       return;
     }
     var hash = 0;
     var size = 50;
     var fifo = new ArrayDeque<Tuple>(size);
     for (int i = 0; i < size; i++) {
-      if (iterator.hasNext()) {
-        hash = addHash(fifo, iterator, hash);
+      if (instructions.hasNext()) {
+        hash = addHash(fifo, instructions, hash);
       }
     }
-    add("cc2", fifo.remove().line, hash);
-    while (iterator.hasNext()) {
-      hash = rollingHash(fifo, iterator, hash);
+    add(filename, peek(fifo).line, hash);
+    while (instructions.hasNext()) {
+      hash = rollingHash(fifo, filename, instructions, hash);
     }
+  }
+
+  private static Tuple peek(ArrayDeque<Tuple> fifo) {
+    return fifo.peek();
   }
 
   private int addHash(ArrayDeque<Tuple> fifo, Iterator<ReadByteCode.Tuple> iterator, int hash) {
@@ -87,11 +94,11 @@ public class InstructionDB {
     return hash;
   }
 
-  private int rollingHash(ArrayDeque<Tuple> fifo, Iterator<ReadByteCode.Tuple> iterator, int hash) {
+  private int rollingHash(ArrayDeque<Tuple> fifo, String filename, Iterator<ReadByteCode.Tuple> iterator, int hash) {
     var lastElement = fifo.remove();
     hash -= lastElement.hash;
     hash = addHash(fifo, iterator, hash);
-    add("cc2", fifo.remove().line, hash);
+    add(filename, peek(fifo).line, hash);
     return hash;
   }
 

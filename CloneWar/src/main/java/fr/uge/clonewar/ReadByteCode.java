@@ -4,6 +4,7 @@ import fr.uge.clonewar.backend.InstructionDB;
 import org.objectweb.asm.*;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.constant.ClassDesc;
 import java.lang.constant.MethodTypeDesc;
 import java.lang.module.ModuleFinder;
@@ -11,30 +12,32 @@ import java.lang.reflect.Modifier;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-public class ReadByteCode implements Iterable<ReadByteCode.Tuple>{
+public class ReadByteCode {
 
-  public record Tuple(int line, String opcode){}
+  public record Tuple(int line, String opcode) {}
+
+  private final HashMap<String, TreeMap<Integer, List<String>>> files = new HashMap<>();
   private int line;
-  private final TreeMap<Integer, List<String>> map = new TreeMap<>();
-  private boolean isDouble = false;
 
-  public ReadByteCode() {
-    map.put(line, new ArrayList<>());
+  public Stream<Map.Entry<String, Iterator<ReadByteCode.Tuple>>> stream() {
+    return files.entrySet()
+        .stream()
+        .map(entry -> Map.entry(entry.getKey(), getInstructionsIterator(entry.getValue())));
   }
 
-  @Override
-  public Iterator<Tuple> iterator() {
-    return map.entrySet()
-            .stream()
-            .flatMap(entry -> entry.getValue().stream()
-                    .map(value -> new Tuple(entry.getKey(), value)))
-            .iterator();
+  private static Iterator<ReadByteCode.Tuple> getInstructionsIterator(TreeMap<Integer, List<String>> instructions) {
+    return instructions.entrySet()
+        .stream()
+        .flatMap(entry -> entry.getValue().stream()
+            .map(value -> new Tuple(entry.getKey(), value)))
+        .iterator();
   }
 
   @Override
   public String toString() {
-    return map.entrySet()
+    return files.entrySet()
         .stream()
         .map(entry -> entry.getKey() + " : " + entry.getValue())
         .collect(Collectors.joining("\n"));
@@ -50,117 +53,108 @@ public class ReadByteCode implements Iterable<ReadByteCode.Tuple>{
           continue;
         }
         try (var inputStream = reader.open(filename).orElseThrow()) {
-          var classReader = new ClassReader(inputStream);
-          classReader.accept(new ClassVisitor(Opcodes.ASM9) {
-
-            private static String modifier(int access) {
-              if (Modifier.isPublic(access)) {
-                return "public";
-              }
-              if (Modifier.isPrivate(access)) {
-                return "private";
-              }
-              if (Modifier.isProtected(access)) {
-                return "protected";
-              }
-              return "";
-            }
-
-            @Override
-            public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
-            }
-
-            @Override
-            public RecordComponentVisitor visitRecordComponent(String name, String descriptor, String signature) {
-              return null;
-            }
-
-            @Override
-            public FieldVisitor visitField(int access, String name, String descriptor, String signature, Object value) {
-              return null;
-            }
-
-            @Override
-            public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
-              return new MethodVisitor(Opcodes.ASM9) {
-                @Override
-                public void visitInsn(int opcode) {
-                  add(opcodeToString(opcode));
-                }
-
-                @Override
-                public void visitMethodInsn(int opcode, String owner, String name, String descriptor, boolean isInterface) {
-                  add(opcodeToString(opcode));
-                }
-
-                @Override
-                public void visitIntInsn(int opcode, int operand) {
-                  add(opcodeToString(opcode) + " " + operand);
-                }
-
-                @Override
-                public void visitVarInsn(int opcode, int varIndex) {
-                  add(opcodeToString(opcode) + " " + varIndex);
-                }
-
-                @Override
-                public void visitTypeInsn(int opcode, String type) {
-                  add(opcodeToString(opcode));
-                }
-
-                @Override
-                public void visitFieldInsn(int opcode, String owner, String name, String descriptor) {
-                  add(opcodeToString(opcode));
-                }
-
-                @Override
-                public void visitJumpInsn(int opcode, Label label) {
-                  add(opcodeToString(opcode));
-                }
-
-                @Override
-                public void visitLineNumber(int line, Label label) {
-                  setLine(line);
-                  init(line);
-                }
-              };
-            }
-          },0);
-
+          var instructions = analyzeByteCode(inputStream);
+          files.put(filename, instructions);
         }
       }
     }
   }
 
-  public static void main(String[] args) throws IOException {
-    var readByteCode = new ReadByteCode();
-    readByteCode.analyze(Path.of("simd.jar"));
-    var instructionDB = new InstructionDB();
-    instructionDB.createTable();
-    instructionDB.addToBase(readByteCode);
+  private TreeMap<Integer, List<String>> analyzeByteCode(InputStream inputStream) throws IOException {
+    var instructions = new TreeMap<Integer, List<String>>();
+    line = 0;
+    instructions.put(0, new ArrayList<>()); // init first line
+
+    var classReader = new ClassReader(inputStream);
+    classReader.accept(new ClassVisitor(Opcodes.ASM9) {
+        private static String modifier(int access) {
+          if (Modifier.isPublic(access)) {
+            return "public";
+          }
+          if (Modifier.isPrivate(access)) {
+            return "private";
+          }
+          if (Modifier.isProtected(access)) {
+            return "protected";
+          }
+          return "";
+        }
+
+        @Override
+        public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
+//          System.err.println("class " + modifier(access) + " " + name + " " + superName + " " + (interfaces != null? Arrays.toString(interfaces): ""));
+        }
+
+        @Override
+        public RecordComponentVisitor visitRecordComponent(String name, String descriptor, String signature) {
+//          System.err.println("  component " + name + " " + ClassDesc.ofDescriptor(descriptor).displayName());
+          return null;
+        }
+
+        @Override
+        public FieldVisitor visitField(int access, String name, String descriptor, String signature, Object value) {
+//          System.err.println("  field " + modifier(access) + " " + name + " " + ClassDesc.ofDescriptor(descriptor).displayName() + " " + signature);
+          return null;
+        }
+
+        @Override
+        public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
+//          System.err.println("  method " + modifier(access) + " " + name + " " + MethodTypeDesc.ofDescriptor(descriptor).displayDescriptor() + " " + signature);
+          return new MethodVisitor(Opcodes.ASM9) {
+            @Override
+            public void visitInsn(int opcode) {
+//              System.err.println(line + " " + opcodeToString(opcode));
+              instructions.get(line).add(opcodeToString(opcode));
+            }
+
+            @Override
+            public void visitMethodInsn(int opcode, String owner, String name, String descriptor, boolean isInterface) {
+//              System.err.println(line + " " + opcodeToString(opcode) + " " + name);
+              instructions.get(line).add(opcodeToString(opcode) + " " + name);
+            }
+
+            @Override
+            public void visitIntInsn(int opcode, int operand) {
+//              System.err.println(line + " " + opcodeToString(opcode) + " " + operand);
+              instructions.get(line).add(opcodeToString(opcode) + " " + operand);
+            }
+
+            @Override
+            public void visitVarInsn(int opcode, int varIndex) {
+//              System.err.println(line + " " + opcodeToString(opcode) + " " + varIndex);
+              instructions.get(line).add(opcodeToString(opcode) + " " + varIndex);
+            }
+
+            @Override
+            public void visitTypeInsn(int opcode, String type) {
+//              System.err.println(line + " " + opcodeToString(opcode));
+              instructions.get(line).add(opcodeToString(opcode));
+            }
+
+            @Override
+            public void visitFieldInsn(int opcode, String owner, String name, String descriptor) {
+//              System.err.println(line + " " + opcodeToString(opcode) + " " + descriptor);
+              instructions.get(line).add(opcodeToString(opcode) + " " + descriptor);
+            }
+
+            @Override
+            public void visitJumpInsn(int opcode, Label label) {
+//              System.err.println(line + " " + opcodeToString(opcode));
+              instructions.get(line).add(opcodeToString(opcode));
+            }
+
+            @Override
+            public void visitLineNumber(int visitedLine, Label label) {
+              line = visitedLine;
+              instructions.putIfAbsent(line, new ArrayList<>());
+            }
+          };
+        }
+      },0);
+    return instructions;
   }
 
-  private void init(int line) {
-    map.putIfAbsent(line, new ArrayList<>());
-  }
-
-  private void setLine(int line) {
-    if(map.containsKey(line)){
-      isDouble = true;
-      return;
-    }
-    isDouble = false;
-    this.line = line;
-  }
-
-  private void add(String opcodeToString) {
-    if(isDouble){
-      return;
-    }
-    map.get(line).add(opcodeToString);
-  }
-
-  private static String opcodeToString(int opcode){
+  private static String opcodeToString(int opcode) {
     return switch (opcode) {
       case Opcodes.NOP -> "NOP";
       case Opcodes.ACONST_NULL -> "CONST_NULL";
@@ -316,5 +310,13 @@ public class ReadByteCode implements Iterable<ReadByteCode.Tuple>{
       case Opcodes.I2C -> "I2C";
       default -> throw new IllegalStateException("Unexpected value: " + opcode);
     };
+  }
+
+  public static void main(String[] args) throws IOException {
+    var readByteCode = new ReadByteCode();
+    readByteCode.analyze(Path.of("simd.jar"));
+    var instructionDB = new InstructionDB();
+    instructionDB.createTable();
+    instructionDB.addToBase(readByteCode);
   }
 }
