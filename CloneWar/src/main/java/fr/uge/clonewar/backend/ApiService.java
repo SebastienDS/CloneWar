@@ -13,10 +13,7 @@ import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
 import io.helidon.webserver.Service;
 
-
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 
@@ -41,10 +38,8 @@ public final class ApiService implements Service {
           var readByteCode = new ReadByteCode();
           try {
             readByteCode.analyze(artefact.main());
-          } catch (Exception e) {
-            System.out.println("Error " + e);
-            System.out.println(readByteCode);
-            throw new RuntimeException(e);
+          } catch (IOException e) {
+            response.send(e);
           }
 
           System.out.println("Done ! ");
@@ -66,14 +61,6 @@ public final class ApiService implements Service {
                   .build());
           return path;
         }).collectList()
-        .map(files -> {
-          try {
-            Thread.sleep(10_000);
-          } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-          }
-          return new Artefact(files.get(0), files.get(1));
-        });
+        .map(files -> new Artefact(files.get(0), files.get(1)));
   }
-
 }
