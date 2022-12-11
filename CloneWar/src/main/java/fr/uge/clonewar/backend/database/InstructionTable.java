@@ -1,9 +1,12 @@
 package fr.uge.clonewar.backend.database;
 
+import io.helidon.common.reactive.CompletionAwaitable;
 import io.helidon.dbclient.DbClient;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 
 public class InstructionTable {
@@ -39,6 +42,31 @@ public class InstructionTable {
       System.err.println(t.getMessage());
       return null;
     })).await();
+  }
+
+  public void insertAll(List<InstructionRow> instructions) {
+    Objects.requireNonNull(instructions);
+    if (instructions.isEmpty()) {
+      throw new IllegalArgumentException("Require instructions");
+    }
+
+    var chunkSize = 25_000;
+    var size = instructions.size();
+
+    var awaitables = IntStream.range(0, (size + chunkSize - 1) / chunkSize)
+        .mapToObj(i -> instructions.subList(i * chunkSize, Math.min(chunkSize * (i + 1), size)))
+        .map(chunk -> chunk.stream()
+            .map(instr -> "(" + instr.line + ", " + instr.hash + ", " + instr.fileId + ")")
+            .collect(Collectors.joining(", "))
+        ).map(values ->
+            dbClient.execute(exec -> exec.insert("INSERT INTO instruction(line, hash, fileId) VALUES " + values))
+                .exceptionally((t -> {
+                  t.printStackTrace();
+                  return null;
+                }))
+        ).toList();
+
+    awaitables.forEach(CompletionAwaitable::await);
   }
 
   public List<Tuple> getLineAndHash(String filename) {

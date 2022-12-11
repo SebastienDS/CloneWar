@@ -342,17 +342,22 @@ public class ReadByteCode {
         new ArtefactTable.ArtefactRow(readByteCode.jar().getFileName().toString())
     );
 
+    var instructions = new ArrayList<InstructionTable.InstructionRow>();
+
     readByteCode.stream()
 //        .filter(entry -> entry.getKey().contains("clonewar"))
         .peek(entry -> System.out.println(entry.getKey()))
         .forEach(entry -> {
           var filename = entry.getKey();
           var fileId = db.fileTable().insert(new FileTable.FileRow(filename, artefactId));
-          addInstructions(db.instructionTable(), fileId, entry.getValue());
+          addInstructions(instructions, fileId, entry.getValue());
         });
+
+    db.instructionTable().insertAll(instructions);
   }
 
-  private static void addInstructions(InstructionTable table, int fileId, Iterator<Tuple> instructions) {
+  private static void addInstructions(ArrayList<InstructionTable.InstructionRow> list, int fileId,
+                                      Iterator<Tuple> instructions) {
     if (!instructions.hasNext()) {
       return;
     }
@@ -364,9 +369,9 @@ public class ReadByteCode {
         hash = addHash(fifo, instructions, hash);
       }
     }
-    table.insert(new InstructionTable.InstructionRow(peek(fifo).line(), hash, fileId));
+    list.add(new InstructionTable.InstructionRow(peek(fifo).line(), hash, fileId));
     while (instructions.hasNext()) {
-      hash = rollingHash(table, fifo, fileId, instructions, hash);
+      hash = rollingHash(list, fifo, fileId, instructions, hash);
     }
   }
 
@@ -381,11 +386,11 @@ public class ReadByteCode {
     return hash;
   }
 
-  private static int rollingHash(InstructionTable table, ArrayDeque<InstructionTable.Tuple> fifo, int fileId, Iterator<ReadByteCode.Tuple> iterator, int hash) {
+  private static int rollingHash(List<InstructionTable.InstructionRow> list, ArrayDeque<InstructionTable.Tuple> fifo, int fileId, Iterator<ReadByteCode.Tuple> iterator, int hash) {
     var lastElement = fifo.remove();
     hash -= lastElement.hash();
     hash = addHash(fifo, iterator, hash);
-    table.insert(new InstructionTable.InstructionRow(peek(fifo).line(), hash, fileId));
+    list.add(new InstructionTable.InstructionRow(peek(fifo).line(), hash, fileId));
     return hash;
   }
 
