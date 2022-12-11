@@ -2,6 +2,7 @@ package fr.uge.clonewar.backend;
 
 import fr.uge.clonewar.Artefact;
 import fr.uge.clonewar.ReadByteCode;
+import fr.uge.clonewar.backend.database.Database;
 import io.helidon.common.configurable.ThreadPoolSupplier;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
@@ -15,13 +16,20 @@ import io.helidon.webserver.Service;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.locks.ReentrantLock;
 
 public final class ApiService implements Service {
 
+  private final Database db;
   private final FileStorage storage = new FileStorage();
   private final ExecutorService executor = ThreadPoolSupplier.create("multipart-thread-pool").get();
 
+  public ApiService(Database db) {
+    Objects.requireNonNull(db);
+    this.db = db;
+  }
 
   @Override
   public void update(Routing.Rules rules) {
@@ -35,12 +43,14 @@ public final class ApiService implements Service {
         .thenAccept(artefact -> {
           System.out.println("Analyzing... " + artefact);
 
-          var readByteCode = new ReadByteCode();
+          var readByteCode = new ReadByteCode(artefact.main());
           try {
-            readByteCode.analyze(artefact.main());
+            readByteCode.analyze();
           } catch (IOException e) {
             response.send(e);
           }
+
+          ReadByteCode.addToBase(db, readByteCode);
 
           System.out.println("Done ! ");
 

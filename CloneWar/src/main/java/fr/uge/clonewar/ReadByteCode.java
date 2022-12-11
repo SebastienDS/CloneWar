@@ -1,12 +1,14 @@
 package fr.uge.clonewar;
 
-import fr.uge.clonewar.backend.InstructionDB;
+import fr.uge.clonewar.backend.database.ArtefactTable;
+import fr.uge.clonewar.backend.database.Database;
+import fr.uge.clonewar.backend.database.FileTable;
+import fr.uge.clonewar.backend.database.InstructionTable;
+import io.helidon.dbclient.jdbc.JdbcDbClientProviderBuilder;
 import org.objectweb.asm.*;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.constant.ClassDesc;
-import java.lang.constant.MethodTypeDesc;
 import java.lang.module.ModuleFinder;
 import java.lang.reflect.Modifier;
 import java.nio.file.Path;
@@ -20,6 +22,12 @@ public class ReadByteCode {
 
   private final HashMap<String, TreeMap<Integer, List<String>>> files = new HashMap<>();
   private int line;
+  private final Path jar;
+
+  public ReadByteCode(Path jar) {
+    Objects.requireNonNull(jar);
+    this.jar = jar;
+  }
 
   public Stream<Map.Entry<String, Iterator<ReadByteCode.Tuple>>> stream() {
     return files.entrySet()
@@ -43,7 +51,11 @@ public class ReadByteCode {
         .collect(Collectors.joining("\n"));
   }
 
-  public void analyze(Path jar) throws IOException {
+  public Path jar() {
+    return jar;
+  }
+
+  public void analyze() throws IOException {
     var finder = ModuleFinder.of(jar);
     var moduleReference = finder.findAll().stream().findFirst().orElseThrow();
 
@@ -313,10 +325,73 @@ public class ReadByteCode {
   }
 
   public static void main(String[] args) throws IOException {
-    var readByteCode = new ReadByteCode();
-    readByteCode.analyze(Path.of("simd.jar"));
-    var instructionDB = new InstructionDB();
-    instructionDB.createTable();
-    instructionDB.addToBase(readByteCode);
+    var readByteCode = new ReadByteCode(Path.of("simd.jar"));
+    readByteCode.analyze();
+
+    var dbClient = JdbcDbClientProviderBuilder.create()
+        .url("jdbc:sqlite:cloneWar.db")
+        .build();
+    var db = new Database(dbClient);
+    addToBase(db, readByteCode);
+  }
+
+  public static void addToBase(Database db, ReadByteCode readByteCode) {
+    Objects.requireNonNull(readByteCode);
+
+    var artefactId = db.artefactTable().insert(
+        new ArtefactTable.ArtefactRow(readByteCode.jar().getFileName().toString())
+    );
+
+    readByteCode.stream()
+//        .filter(entry -> entry.getKey().contains("clonewar"))
+        .peek(entry -> System.out.println(entry.getKey()))
+        .forEach(entry -> {
+          var filename = entry.getKey();
+          var fileId = db.fileTable().insert(new FileTable.FileRow(filename, artefactId));
+          addInstructions(db.instructionTable(), fileId, entry.getValue());
+        });
+  }
+
+  private static void addInstructions(InstructionTable table, int fileId, Iterator<Tuple> instructions) {
+    if (!instructions.hasNext()) {
+      return;
+    }
+    var hash = 0;
+    var size = 25;
+    var fifo = new ArrayDeque<InstructionTable.Tuple>(size);
+    for (int i = 0; i < size; i++) {
+      if (instructions.hasNext()) {
+        hash = addHash(fifo, instructions, hash);
+      }
+    }
+    table.insert(new InstructionTable.InstructionRow(peek(fifo).line(), hash, fileId));
+    while (instructions.hasNext()) {
+      hash = rollingHash(table, fifo, fileId, instructions, hash);
+    }
+  }
+
+  private static InstructionTable.Tuple peek(ArrayDeque<InstructionTable.Tuple> fifo) {
+    return fifo.peek();
+  }
+
+  private static int addHash(ArrayDeque<InstructionTable.Tuple> fifo, Iterator<ReadByteCode.Tuple> iterator, int hash) {
+    var nextTuple = getNextTuple(iterator);
+    hash += nextTuple.hash();
+    fifo.add(nextTuple);
+    return hash;
+  }
+
+  private static int rollingHash(InstructionTable table, ArrayDeque<InstructionTable.Tuple> fifo, int fileId, Iterator<ReadByteCode.Tuple> iterator, int hash) {
+    var lastElement = fifo.remove();
+    hash -= lastElement.hash();
+    hash = addHash(fifo, iterator, hash);
+    table.insert(new InstructionTable.InstructionRow(peek(fifo).line(), hash, fileId));
+    return hash;
+  }
+
+  private static InstructionTable.Tuple getNextTuple(Iterator<ReadByteCode.Tuple> iterator){
+    var nextElement = iterator.next();
+    var nextElementHash = nextElement.opcode().hashCode();
+    return new InstructionTable.Tuple(nextElement.line(), nextElementHash);
   }
 }

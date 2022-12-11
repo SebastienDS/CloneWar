@@ -1,8 +1,9 @@
 package fr.uge.clonewar.backend;
 
-import fr.uge.clonewar.backend.ApiService;
+import fr.uge.clonewar.backend.database.Database;
 import io.helidon.common.reactive.Single;
 import io.helidon.config.Config;
+import io.helidon.dbclient.jdbc.JdbcDbClientProviderBuilder;
 import io.helidon.media.jsonp.JsonpSupport;
 import io.helidon.media.multipart.MultiPartSupport;
 import io.helidon.openapi.OpenAPISupport;
@@ -10,11 +11,15 @@ import io.helidon.webserver.Routing;
 import io.helidon.webserver.WebServer;
 import io.helidon.webserver.staticcontent.StaticContentSupport;
 
+import java.util.Objects;
+
 public class Server {
 
-  public static Single<WebServer> startServer() {
-    var config = Config.create();
-    var server = WebServer.builder(createRouting())
+  public static Single<WebServer> startServer(Database db, Config config) {
+    Objects.requireNonNull(db);
+    Objects.requireNonNull(config);
+
+    var server = WebServer.builder(createRouting(db))
         .config(config.get("server"))
         .addMediaSupport(MultiPartSupport.create())
         .addMediaSupport(JsonpSupport.create())
@@ -30,14 +35,23 @@ public class Server {
     return server;
   }
 
-  private static Routing createRouting() {
+  public static Single<WebServer> startServer() {
+    var config = Config.create();
+    var dbClient = JdbcDbClientProviderBuilder.create()
+        .url("jdbc:sqlite:cloneWar.db")
+        .build();
+    var db = new Database(dbClient);
+    return startServer(db, config);
+  }
+
+  private static Routing createRouting(Database db) {
     var staticContent = StaticContentSupport.builder("/dist")
         .welcomeFileName("index.html")
         .build();
 
     return Routing.builder()
         .register(OpenAPISupport.create())
-        .register("/api", new ApiService())
+        .register("/api", new ApiService(db))
         .register("/", staticContent) // frontend/dist
         .build();
   }
