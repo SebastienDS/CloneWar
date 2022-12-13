@@ -50,7 +50,7 @@ public final class ApiService implements Service {
             response.send(e);
           }
 
-          ReadByteCode.addToBase(db, readByteCode);
+          // TODO
 
           System.out.println("Done ! ");
 

@@ -13,6 +13,8 @@ import java.lang.module.ModuleFinder;
 import java.lang.reflect.Modifier;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -29,7 +31,14 @@ public class ReadByteCode {
     this.jar = jar;
   }
 
-  public Stream<Map.Entry<String, Iterator<ReadByteCode.Tuple>>> stream() {
+  public void forEach(BiConsumer<? super String, ? super Iterator<ReadByteCode.Tuple>> consumer) {
+    Objects.requireNonNull(consumer);
+    stream()
+        .filter(entry -> entry.getKey().contains("clonewar")) // move to analyze
+        .forEach(entry -> consumer.accept(entry.getKey(), entry.getValue()));
+  }
+
+  private Stream<Map.Entry<String, Iterator<ReadByteCode.Tuple>>> stream() {
     return files.entrySet()
         .stream()
         .map(entry -> Map.entry(entry.getKey(), getInstructionsIterator(entry.getValue())));
@@ -64,6 +73,8 @@ public class ReadByteCode {
         if (!filename.endsWith(".class")) {
           continue;
         }
+        // TODO filter dependencies ?
+
         try (var inputStream = reader.open(filename).orElseThrow()) {
           var instructions = analyzeByteCode(inputStream);
           files.put(filename, instructions);
@@ -325,53 +336,47 @@ public class ReadByteCode {
   }
 
   public static void main(String[] args) throws IOException {
-    var readByteCode = new ReadByteCode(Path.of("simd.jar"));
+    var readByteCode = new ReadByteCode(Path.of("target", "CloneWar.jar"));
     readByteCode.analyze();
 
     var dbClient = JdbcDbClientProviderBuilder.create()
         .url("jdbc:sqlite:cloneWar.db")
         .build();
     var db = new Database(dbClient);
-    addToBase(db, readByteCode);
-  }
-
-  public static void addToBase(Database db, ReadByteCode readByteCode) {
-    Objects.requireNonNull(readByteCode);
 
     var artefactId = db.artefactTable().insert(
         new ArtefactTable.ArtefactRow(readByteCode.jar().getFileName().toString())
     );
 
-    var instructions = new ArrayList<InstructionTable.InstructionRow>();
+    readByteCode.forEach((filename, iterator) -> {
+      System.out.println(filename);
 
-    readByteCode.stream()
-//        .filter(entry -> entry.getKey().contains("clonewar"))
-        .peek(entry -> System.out.println(entry.getKey()))
-        .forEach(entry -> {
-          var filename = entry.getKey();
-          var fileId = db.fileTable().insert(new FileTable.FileRow(filename, artefactId));
-          addInstructions(instructions, fileId, entry.getValue());
-        });
+      var fileId = db.fileTable().insert(new FileTable.FileRow(filename, artefactId));
+      consumeInstructions(iterator, entry -> {
+        var instruction = new InstructionTable.InstructionRow(entry.getKey(), entry.getValue(), fileId);
+        db.instructionTable().bufferedInsert(instruction);
+      });
+    });
 
-    db.instructionTable().insertAll(instructions);
+    db.instructionTable().flushBuffer();
   }
 
-  private static void addInstructions(ArrayList<InstructionTable.InstructionRow> list, int fileId,
-                                      Iterator<Tuple> instructions) {
+  private static void consumeInstructions(Iterator<Tuple> instructions, Consumer<? super Map.Entry<Integer, Integer>> consumer) {
     if (!instructions.hasNext()) {
       return;
     }
     var hash = 0;
-    var size = 25;
+    var size = 5;
     var fifo = new ArrayDeque<InstructionTable.Tuple>(size);
     for (int i = 0; i < size; i++) {
       if (instructions.hasNext()) {
         hash = addHash(fifo, instructions, hash);
       }
     }
-    list.add(new InstructionTable.InstructionRow(peek(fifo).line(), hash, fileId));
+
+    consumer.accept(Map.entry(peek(fifo).line(), hash));
     while (instructions.hasNext()) {
-      hash = rollingHash(list, fifo, fileId, instructions, hash);
+      hash = rollingHash(fifo, instructions, hash, consumer);
     }
   }
 
@@ -386,11 +391,12 @@ public class ReadByteCode {
     return hash;
   }
 
-  private static int rollingHash(List<InstructionTable.InstructionRow> list, ArrayDeque<InstructionTable.Tuple> fifo, int fileId, Iterator<ReadByteCode.Tuple> iterator, int hash) {
+  private static int rollingHash(ArrayDeque<InstructionTable.Tuple> fifo, Iterator<ReadByteCode.Tuple> iterator,
+                                 int hash, Consumer<? super Map.Entry<Integer, Integer>> consumer) {
     var lastElement = fifo.remove();
     hash -= lastElement.hash();
     hash = addHash(fifo, iterator, hash);
-    list.add(new InstructionTable.InstructionRow(peek(fifo).line(), hash, fileId));
+    consumer.accept(Map.entry(peek(fifo).line(), hash));
     return hash;
   }
 
