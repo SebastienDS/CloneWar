@@ -3,6 +3,7 @@ package fr.uge.clonewar.backend.database;
 import io.helidon.common.reactive.CompletionAwaitable;
 import io.helidon.dbclient.DbClient;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -13,7 +14,11 @@ public class InstructionTable {
 
   public record InstructionRow(int line, int hash, int fileId) {}
 
+  public record Tuple(int line, int hash) {}
+
+  private static final int MAX_CAPACITY = 25_000;
   private final DbClient dbClient;
+  private final ArrayList<InstructionRow> buffer = new ArrayList<>();
 
   public InstructionTable(DbClient dbclient) {
     Objects.requireNonNull(dbclient);
@@ -69,6 +74,34 @@ public class InstructionTable {
     awaitables.forEach(CompletionAwaitable::await);
   }
 
+  public void bufferedInsert(InstructionRow instruction) {
+    Objects.requireNonNull(instruction);
+
+    buffer.add(instruction);
+
+    if (buffer.size() >= MAX_CAPACITY) {
+      flushBuffer();
+    }
+  }
+
+  public void flushBuffer() {
+    if (buffer.isEmpty()) {
+      return;
+    }
+
+    var values = buffer.stream()
+        .map(instr -> "(" + instr.line + ", " + instr.hash + ", " + instr.fileId + ")")
+        .collect(Collectors.joining(", "));
+
+    dbClient.execute(exec -> exec.insert("INSERT INTO instruction(line, hash, fileId) VALUES " + values))
+        .exceptionally((t -> {
+          t.printStackTrace();
+          return null;
+        })).await();
+
+    buffer.clear();
+  }
+
   public List<Tuple> getLineAndHash(String filename) {
     Objects.requireNonNull(filename);
     var query = """
@@ -87,7 +120,5 @@ public class InstructionTable {
           return null;
         })).await();
   }
-
-  public record Tuple(int line, int hash) {}
 
 }
