@@ -352,57 +352,57 @@ public class ReadByteCode {
       System.out.println(filename);
 
       var fileId = db.fileTable().insert(new FileTable.FileRow(filename, artefactId));
-      consumeInstructions(iterator, entry -> {
-        var instruction = new InstructionTable.InstructionRow(entry.getKey(), entry.getValue(), fileId);
-        db.instructionTable().bufferedInsert(instruction);
+      consumeInstructions(iterator, instruction -> {
+        var row = new InstructionTable.InstructionRow(instruction, fileId);
+        db.instructionTable().bufferedInsert(row);
       });
     });
 
     db.instructionTable().flushBuffer();
   }
 
-  private static void consumeInstructions(Iterator<Tuple> instructions, Consumer<? super Map.Entry<Integer, Integer>> consumer) {
+  private static void consumeInstructions(Iterator<Tuple> instructions, Consumer<? super Instruction> consumer) {
     if (!instructions.hasNext()) {
       return;
     }
     var hash = 0;
     var size = 5;
-    var fifo = new ArrayDeque<InstructionTable.Tuple>(size);
+    var fifo = new ArrayDeque<Instruction>(size);
     for (int i = 0; i < size; i++) {
       if (instructions.hasNext()) {
         hash = addHash(fifo, instructions, hash);
       }
     }
 
-    consumer.accept(Map.entry(peek(fifo).line(), hash));
+    consumer.accept(new Instruction(peek(fifo).line(), hash));
     while (instructions.hasNext()) {
       hash = rollingHash(fifo, instructions, hash, consumer);
     }
   }
 
-  private static InstructionTable.Tuple peek(ArrayDeque<InstructionTable.Tuple> fifo) {
+  private static Instruction peek(ArrayDeque<Instruction> fifo) {
     return fifo.peek();
   }
 
-  private static int addHash(ArrayDeque<InstructionTable.Tuple> fifo, Iterator<ReadByteCode.Tuple> iterator, int hash) {
+  private static int addHash(ArrayDeque<Instruction> fifo, Iterator<ReadByteCode.Tuple> iterator, int hash) {
     var nextTuple = getNextTuple(iterator);
     hash += nextTuple.hash();
     fifo.add(nextTuple);
     return hash;
   }
 
-  private static int rollingHash(ArrayDeque<InstructionTable.Tuple> fifo, Iterator<ReadByteCode.Tuple> iterator,
-                                 int hash, Consumer<? super Map.Entry<Integer, Integer>> consumer) {
+  private static int rollingHash(ArrayDeque<Instruction> fifo, Iterator<ReadByteCode.Tuple> iterator,
+                                 int hash, Consumer<? super Instruction> consumer) {
     var lastElement = fifo.remove();
     hash -= lastElement.hash();
     hash = addHash(fifo, iterator, hash);
-    consumer.accept(Map.entry(peek(fifo).line(), hash));
+    consumer.accept(new Instruction(peek(fifo).line(), hash));
     return hash;
   }
 
-  private static InstructionTable.Tuple getNextTuple(Iterator<ReadByteCode.Tuple> iterator){
+  private static Instruction getNextTuple(Iterator<ReadByteCode.Tuple> iterator){
     var nextElement = iterator.next();
     var nextElementHash = nextElement.opcode().hashCode();
-    return new InstructionTable.Tuple(nextElement.line(), nextElementHash);
+    return new Instruction(nextElement.line(), nextElementHash);
   }
 }

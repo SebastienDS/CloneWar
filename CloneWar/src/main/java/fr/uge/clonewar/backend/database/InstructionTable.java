@@ -1,5 +1,6 @@
 package fr.uge.clonewar.backend.database;
 
+import fr.uge.clonewar.Instruction;
 import io.helidon.common.reactive.CompletionAwaitable;
 import io.helidon.dbclient.DbClient;
 
@@ -12,9 +13,7 @@ import java.util.stream.IntStream;
 
 public class InstructionTable {
 
-  public record InstructionRow(int line, int hash, int fileId) {}
-
-  public record Tuple(int line, int hash) {}
+  public record InstructionRow(Instruction instruction, int fileId) {}
 
   private static final int MAX_CAPACITY = 25_000;
   private final DbClient dbClient;
@@ -36,12 +35,12 @@ public class InstructionTable {
         }).await();
   }
 
-  public void insert(InstructionRow instruction) {
-    Objects.requireNonNull(instruction);
+  public void insert(InstructionRow row) {
+    Objects.requireNonNull(row);
     dbClient.execute(exec -> exec.createInsert("INSERT INTO instruction(line, hash, fileId) VALUES (?, ?, ?)")
-        .addParam(instruction.line)
-        .addParam(instruction.hash)
-        .addParam(instruction.fileId)
+        .addParam(row.instruction.line())
+        .addParam(row.instruction.hash())
+        .addParam(row.fileId)
         .execute()
     ).exceptionally((t -> {
       System.err.println(t.getMessage());
@@ -49,19 +48,19 @@ public class InstructionTable {
     })).await();
   }
 
-  public void insertAll(List<InstructionRow> instructions) {
-    Objects.requireNonNull(instructions);
-    if (instructions.isEmpty()) {
+  public void insertAll(List<InstructionRow> rows) {
+    Objects.requireNonNull(rows);
+    if (rows.isEmpty()) {
       throw new IllegalArgumentException("Require instructions");
     }
 
     var chunkSize = 25_000;
-    var size = instructions.size();
+    var size = rows.size();
 
     var awaitables = IntStream.range(0, (size + chunkSize - 1) / chunkSize)
-        .mapToObj(i -> instructions.subList(i * chunkSize, Math.min(chunkSize * (i + 1), size)))
+        .mapToObj(i -> rows.subList(i * chunkSize, Math.min(chunkSize * (i + 1), size)))
         .map(chunk -> chunk.stream()
-            .map(instr -> "(" + instr.line + ", " + instr.hash + ", " + instr.fileId + ")")
+            .map(row -> "(" + row.instruction.line() + ", " + row.instruction.hash() + ", " + row.fileId + ")")
             .collect(Collectors.joining(", "))
         ).map(values ->
             dbClient.execute(exec -> exec.insert("INSERT INTO instruction(line, hash, fileId) VALUES " + values))
@@ -90,7 +89,7 @@ public class InstructionTable {
     }
 
     var values = buffer.stream()
-        .map(instr -> "(" + instr.line + ", " + instr.hash + ", " + instr.fileId + ")")
+        .map(row -> "(" + row.instruction.line() + ", " + row.instruction.hash() + ", " + row.fileId + ")")
         .collect(Collectors.joining(", "));
 
     dbClient.execute(exec -> exec.insert("INSERT INTO instruction(line, hash, fileId) VALUES " + values))
@@ -102,7 +101,7 @@ public class InstructionTable {
     buffer.clear();
   }
 
-  public List<Tuple> getLineAndHash(String filename) {
+  public List<Instruction> getLineAndHash(String filename) {
     Objects.requireNonNull(filename);
     var query = """
       SELECT line, hash
@@ -111,7 +110,7 @@ public class InstructionTable {
       WHERE filename = ?
       """;
     return dbClient.execute(exec -> exec.query(query, filename))
-        .map(dbRow -> new Tuple(
+        .map(dbRow -> new Instruction(
             dbRow.column("line").as(Integer.class),
             dbRow.column("hash").as(Integer.class))
         ).collectList()
