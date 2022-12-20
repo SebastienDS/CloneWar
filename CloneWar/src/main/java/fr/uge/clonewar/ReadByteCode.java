@@ -7,14 +7,18 @@ import fr.uge.clonewar.backend.database.InstructionTable;
 import io.helidon.dbclient.jdbc.JdbcDbClientProviderBuilder;
 import org.objectweb.asm.*;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.module.ModuleFinder;
+import java.lang.module.ModuleReader;
 import java.lang.reflect.Modifier;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -34,7 +38,6 @@ public class ReadByteCode {
   public void forEach(BiConsumer<? super String, ? super Iterator<ReadByteCode.Tuple>> consumer) {
     Objects.requireNonNull(consumer);
     stream()
-        .filter(entry -> entry.getKey().contains("clonewar")) // move to analyze
         .forEach(entry -> consumer.accept(entry.getKey(), entry.getValue()));
   }
 
@@ -69,17 +72,37 @@ public class ReadByteCode {
     var moduleReference = finder.findAll().stream().findFirst().orElseThrow();
 
     try (var reader = moduleReference.open()) {
-      for (var filename: (Iterable<String>) reader.list()::iterator) {
-        if (!filename.endsWith(".class")) {
-          continue;
-        }
-        // TODO filter dependencies ?
+      var projectPackage = getProjectPackage(reader);
+      var baseFile = projectPackage.replace('.', '/');
+
+      var jarFiles = reader.list()
+          .filter(f -> f.startsWith(baseFile) && f.endsWith(".class"));
+      for (var filename: (Iterable<String>) jarFiles::iterator) {
+        System.out.println(filename);
 
         try (var inputStream = reader.open(filename).orElseThrow()) {
           var instructions = analyzeByteCode(inputStream);
           files.put(filename, instructions);
         }
       }
+    }
+  }
+
+  private static String getProjectPackage(ModuleReader reader) throws IOException {
+    var pom = reader.list()
+        .filter(f -> f.contains("pom.xml"))
+        .findFirst()
+        .orElseThrow();
+    try (var inputStream = reader.open(pom).orElseThrow();
+         var bufferedReader = new BufferedReader(new InputStreamReader(inputStream))) {
+      var content = bufferedReader.lines().collect(Collectors.joining("\n"));
+
+      var pattern = Pattern.compile("<groupId>((\\w+\\.?)+)</groupId>");
+      var matcher = pattern.matcher(content);
+      if (matcher.find()) {
+        return matcher.group(1);
+      }
+      return "";
     }
   }
 
