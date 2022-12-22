@@ -11,8 +11,6 @@ import io.helidon.webserver.Routing;
 import io.helidon.webserver.WebServer;
 import io.helidon.webserver.staticcontent.StaticContentSupport;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.Objects;
 
 public class Server {
@@ -32,13 +30,7 @@ public class Server {
 
     server.thenAccept(ws -> {
           System.out.println("Server is up: http://localhost:" + ws.port());
-          ws.whenShutdown().thenRun(() -> {
-            try {
-              storage.clean();
-            } catch (IOException e) {
-              throw new UncheckedIOException(e);
-            }
-          });
+          ws.whenShutdown().thenRun(storage::close);
         })
         .exceptionally(t -> {
           System.err.println("Startup failed: " + t.getMessage());

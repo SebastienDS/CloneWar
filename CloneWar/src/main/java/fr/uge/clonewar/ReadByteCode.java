@@ -68,13 +68,11 @@ public class ReadByteCode {
 
     try (var reader = moduleReference.open()) {
       var projectPackage = getProjectPackage(reader);
-      var baseFile = projectPackage.replace('.', '/');
+      var baseFile = projectPackage == null ? "" : projectPackage.replace('.', '/');
 
       var jarFiles = reader.list()
           .filter(f -> f.startsWith(baseFile) && f.endsWith(".class"));
       for (var filename: (Iterable<String>) jarFiles::iterator) {
-        System.out.println(filename);
-
         try (var inputStream = reader.open(filename).orElseThrow()) {
           var instructions = analyzeByteCode(inputStream);
           files.put(filename, instructions);
@@ -86,9 +84,12 @@ public class ReadByteCode {
   private static String getProjectPackage(ModuleReader reader) throws IOException {
     var pom = reader.list()
         .filter(f -> f.contains("pom.xml"))
-        .findFirst()
-        .orElseThrow();
-    try (var inputStream = reader.open(pom).orElseThrow();
+        .findFirst();
+    if (pom.isEmpty()) {
+      return null;
+    }
+
+    try (var inputStream = reader.open(pom.get()).orElseThrow();
          var bufferedReader = new BufferedReader(new InputStreamReader(inputStream))) {
       var content = bufferedReader.lines().collect(Collectors.joining("\n"));
 
@@ -97,7 +98,7 @@ public class ReadByteCode {
       if (matcher.find()) {
         return matcher.group(1);
       }
-      return "";
+      return null;
     }
   }
 
