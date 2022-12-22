@@ -18,17 +18,18 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.locks.ReentrantLock;
 
 public final class ApiService implements Service {
 
   private final Database db;
-  private final FileStorage storage = new FileStorage();
+  private final FileStorage storage;
   private final ExecutorService executor = ThreadPoolSupplier.create("multipart-thread-pool").get();
 
-  public ApiService(Database db) {
+  public ApiService(Database db, FileStorage storage) {
     Objects.requireNonNull(db);
+    Objects.requireNonNull(storage);
     this.db = db;
+    this.storage = storage;
   }
 
   @Override
@@ -46,6 +47,8 @@ public final class ApiService implements Service {
           var readByteCode = new ReadByteCode(artefact.main());
           try {
             readByteCode.analyze();
+            storage.delete(artefact.main());
+            storage.delete(artefact.source());
           } catch (IOException e) {
             response.send(e);
           }

@@ -11,6 +11,8 @@ import io.helidon.webserver.Routing;
 import io.helidon.webserver.WebServer;
 import io.helidon.webserver.staticcontent.StaticContentSupport;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Objects;
 
 public class Server {
@@ -19,14 +21,25 @@ public class Server {
     Objects.requireNonNull(db);
     Objects.requireNonNull(config);
 
-    var server = WebServer.builder(createRouting(db))
+    var storage = new FileStorage();
+
+    var server = WebServer.builder(createRouting(db, storage))
         .config(config.get("server"))
         .addMediaSupport(MultiPartSupport.create())
         .addMediaSupport(JsonpSupport.create())
         .build()
         .start();
 
-    server.thenAccept(ws -> System.out.println("Server is up: http://localhost:" + ws.port()))
+    server.thenAccept(ws -> {
+          System.out.println("Server is up: http://localhost:" + ws.port());
+          ws.whenShutdown().thenRun(() -> {
+            try {
+              storage.clean();
+            } catch (IOException e) {
+              throw new UncheckedIOException(e);
+            }
+          });
+        })
         .exceptionally(t -> {
           System.err.println("Startup failed: " + t.getMessage());
           t.printStackTrace(System.err);
@@ -44,14 +57,14 @@ public class Server {
     return startServer(db, config);
   }
 
-  private static Routing createRouting(Database db) {
+  private static Routing createRouting(Database db, FileStorage storage) {
     var staticContent = StaticContentSupport.builder("/dist")
         .welcomeFileName("index.html")
         .build();
 
     return Routing.builder()
         .register(OpenAPISupport.create())
-        .register("/api", new ApiService(db))
+        .register("/api", new ApiService(db, storage))
         .register("/", staticContent) // frontend/dist
         .build();
   }
