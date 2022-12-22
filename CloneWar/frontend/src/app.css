@@ -1,7 +1,17 @@
 * {
-    box-sizing: border-box;
+  box-sizing: border-box;
+  scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
 }
 
 html, body, #app, .full-height {
-    height: 100vh;
+  height: 100%;
+}
+
+.no-MP {
+  margin: 0px;
+  padding: 0px;
 }
