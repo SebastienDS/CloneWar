@@ -1,10 +1,5 @@
 package fr.uge.clonewar;
 
-import fr.uge.clonewar.backend.database.ArtefactTable;
-import fr.uge.clonewar.backend.database.Database;
-import fr.uge.clonewar.backend.database.FileTable;
-import fr.uge.clonewar.backend.database.InstructionTable;
-import io.helidon.dbclient.jdbc.JdbcDbClientProviderBuilder;
 import org.objectweb.asm.*;
 
 import java.io.BufferedReader;
@@ -128,65 +123,60 @@ public class ReadByteCode {
 
         @Override
         public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
-//          System.err.println("class " + modifier(access) + " " + name + " " + superName + " " + (interfaces != null? Arrays.toString(interfaces): ""));
         }
 
         @Override
         public RecordComponentVisitor visitRecordComponent(String name, String descriptor, String signature) {
-//          System.err.println("  component " + name + " " + ClassDesc.ofDescriptor(descriptor).displayName());
           return null;
         }
 
         @Override
         public FieldVisitor visitField(int access, String name, String descriptor, String signature, Object value) {
-//          System.err.println("  field " + modifier(access) + " " + name + " " + ClassDesc.ofDescriptor(descriptor).displayName() + " " + signature);
           return null;
         }
 
         @Override
         public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
-//          System.err.println("  method " + modifier(access) + " " + name + " " + MethodTypeDesc.ofDescriptor(descriptor).displayDescriptor() + " " + signature);
           return new MethodVisitor(Opcodes.ASM9) {
             @Override
             public void visitInsn(int opcode) {
-//              System.err.println(line + " " + opcodeToString(opcode));
               instructions.get(line).add(opcodeToString(opcode));
             }
 
             @Override
             public void visitMethodInsn(int opcode, String owner, String name, String descriptor, boolean isInterface) {
-//              System.err.println(line + " " + opcodeToString(opcode) + " " + name);
               instructions.get(line).add(opcodeToString(opcode) + " " + name);
             }
 
             @Override
             public void visitIntInsn(int opcode, int operand) {
-//              System.err.println(line + " " + opcodeToString(opcode) + " " + operand);
               instructions.get(line).add(opcodeToString(opcode) + " " + operand);
             }
 
             @Override
             public void visitVarInsn(int opcode, int varIndex) {
-//              System.err.println(line + " " + opcodeToString(opcode) + " " + varIndex);
               instructions.get(line).add(opcodeToString(opcode) + " " + varIndex);
             }
 
             @Override
             public void visitTypeInsn(int opcode, String type) {
-//              System.err.println(line + " " + opcodeToString(opcode));
               instructions.get(line).add(opcodeToString(opcode));
             }
 
             @Override
             public void visitFieldInsn(int opcode, String owner, String name, String descriptor) {
-//              System.err.println(line + " " + opcodeToString(opcode) + " " + descriptor);
               instructions.get(line).add(opcodeToString(opcode) + " " + descriptor);
             }
 
             @Override
             public void visitJumpInsn(int opcode, Label label) {
-//              System.err.println(line + " " + opcodeToString(opcode));
               instructions.get(line).add(opcodeToString(opcode));
+            }
+
+            @Override
+            public void visitInvokeDynamicInsn(String name, String descriptor, Handle bootstrapMethodHandle,
+                                               Object ... bootstrapMethodArguments){
+              instructions.get(line).add(opcodeToString(Opcodes.INVOKEDYNAMIC) + " " + name);
             }
 
             @Override
@@ -361,7 +351,8 @@ public class ReadByteCode {
   public static void main(String[] args) throws IOException {
     var readByteCode = new ReadByteCode(Path.of("target", "CloneWar.jar"));
     readByteCode.analyze();
-
+    System.out.println(readByteCode);
+    /*
     var dbClient = JdbcDbClientProviderBuilder.create()
         .url("jdbc:sqlite:cloneWar.db")
         .build();
@@ -381,7 +372,7 @@ public class ReadByteCode {
       });
     });
 
-    db.instructionTable().flushBuffer();
+    db.instructionTable().flushBuffer();*/
   }
 
   private static void consumeInstructions(Iterator<Tuple> instructions, Consumer<? super Instruction> consumer) {
