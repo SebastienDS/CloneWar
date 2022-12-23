@@ -22,7 +22,7 @@ public class ArtefactTable {
   }
 
   private void createTable() {
-    dbClient.execute(exec -> exec.update("CREATE TABLE IF NOT EXISTS artefact(id integer, jarName VARCHAR(25), PRIMARY KEY(id))"))
+    dbClient.execute(exec -> exec.update("CREATE TABLE IF NOT EXISTS artefact(id integer, jarName VARCHAR, PRIMARY KEY(id))"))
         .exceptionally(t -> {
           System.err.println(t.getMessage());
           return null;

@@ -1,11 +1,10 @@
 package fr.uge.clonewar;
 
+import fr.uge.clonewar.backend.database.*;
+import io.helidon.dbclient.jdbc.JdbcDbClientProviderBuilder;
 import org.objectweb.asm.*;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.lang.module.ModuleFinder;
 import java.lang.module.ModuleReader;
 import java.lang.reflect.Modifier;
@@ -15,6 +14,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 public class ReadByteCode {
@@ -350,30 +350,75 @@ public class ReadByteCode {
   }
 
   public static void main(String[] args) throws IOException {
-    var readByteCode = new ReadByteCode(Path.of("target", "CloneWar.jar"));
-    readByteCode.analyze();
-    System.out.println(readByteCode);
-    /*
     var dbClient = JdbcDbClientProviderBuilder.create()
         .url("jdbc:sqlite:cloneWar.db")
         .build();
     var db = new Database(dbClient);
 
+    var sources = extractSources(Path.of("junit-jupiter-api-5.9.1-sources.jar"));
+    var readByteCode = new ReadByteCode(Path.of("junit-jupiter-api-5.9.1.jar"));
+    readByteCode.analyze();
+
     var artefactId = db.artefactTable().insert(
         new ArtefactTable.ArtefactRow(readByteCode.jar().getFileName().toString())
     );
 
-    readByteCode.forEach((filename, iterator) -> {
-      System.out.println(filename);
+    var files = sources.stream()
+        .map(entry -> {
+          var file = extractExtension(entry.getKey());
+          return new FileTable.FileRow(file.getKey(), file.getValue(), entry.getValue(), artefactId);
+        })
+        .toList();
 
-      var fileId = db.fileTable().insert(new FileTable.FileRow(filename, artefactId));
-      consumeInstructions(iterator, instruction -> {
+    var map = db.fileTable().insertAll(files);
+
+    readByteCode.forEach((f, iterator) -> {
+      var filename = extractExtension(f);
+      var fileId = map.get(filename.getKey());
+      if (fileId == null) {
+        System.err.println("File " + f + " ignored");
+        return;
+      }
+
+      consumeInstructions(iterator, instruction -> { // TODO should be done internally
         var row = new InstructionTable.InstructionRow(instruction, fileId);
         db.instructionTable().bufferedInsert(row);
       });
     });
 
-    db.instructionTable().flushBuffer();*/
+    db.instructionTable().flushBuffer();
+  }
+
+  private static Map.Entry<String, String> extractExtension(String filename) {
+    var extensionIndex = filename.indexOf('.');
+    var extension = filename.substring(extensionIndex);
+
+    var classNameSeparator = filename.indexOf('$');
+    var className = classNameSeparator != -1
+        ? filename.substring(0, classNameSeparator)
+        : filename.substring(0, extensionIndex);
+    return Map.entry(className, extension);
+  }
+
+  private static List<Map.Entry<String, String>> extractSources(Path jar) throws IOException {
+    var finder = ModuleFinder.of(jar);
+    var moduleReference = finder.findAll().stream().findFirst().orElseThrow();
+
+    try (var reader = moduleReference.open()) {
+      return reader.list()
+          .filter(f -> f.contains(".java"))
+          .map(filename -> {
+            try (var inputStream = reader.open(filename).orElseThrow();
+                 var bufferedReader = new BufferedReader(new InputStreamReader(inputStream))) {
+              var content = bufferedReader.lines().collect(Collectors.joining("\n"));
+              return Map.entry(filename, content);
+            } catch (IOException e) {
+              throw new UncheckedIOException(e);
+            }
+          }).toList();
+    } catch (UncheckedIOException e) {
+      throw e.getCause();
+    }
   }
 
   private static void consumeInstructions(Iterator<Tuple> instructions, Consumer<? super Instruction> consumer) {

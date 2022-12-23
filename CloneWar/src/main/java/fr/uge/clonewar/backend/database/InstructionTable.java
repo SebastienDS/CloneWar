@@ -13,7 +13,11 @@ import java.util.stream.IntStream;
 
 public class InstructionTable {
 
-  public record InstructionRow(Instruction instruction, int fileId) {}
+  public record InstructionRow(Instruction instruction, int fileId) {
+    public InstructionRow {
+      Objects.requireNonNull(instruction);
+    }
+  }
 
   private static final int MAX_CAPACITY = 25_000;
   private final DbClient dbClient;

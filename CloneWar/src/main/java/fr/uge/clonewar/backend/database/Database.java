@@ -9,7 +9,6 @@ public class Database {
   private final DetailTable detailTable;
   private final FileTable fileTable;
   private final InstructionTable instructionTable;
-  private final SourceTable sourceTable;
 
   public Database(DbClient dbClient) {
     Objects.requireNonNull(dbClient);
@@ -18,7 +17,6 @@ public class Database {
     detailTable = new DetailTable(dbClient);
     fileTable = new FileTable(dbClient);
     instructionTable = new InstructionTable(dbClient);
-    sourceTable = new SourceTable(dbClient);
   }
 
   public ArtefactTable artefactTable() {
@@ -37,7 +35,4 @@ public class Database {
     return instructionTable;
   }
 
-  public SourceTable sourceTable() {
-    return sourceTable;
-  }
 }

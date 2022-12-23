@@ -22,7 +22,7 @@ public class DetailTable {
   }
 
   private void createTable() {
-    dbClient.execute(exec -> exec.update("CREATE TABLE IF NOT EXISTS detail(id integer, author VARCHAR(25), artefactId integer, PRIMARY KEY(id))"))
+    dbClient.execute(exec -> exec.update("CREATE TABLE IF NOT EXISTS detail(id integer, author VARCHAR, artefactId integer, PRIMARY KEY(id))"))
         .exceptionally(t -> {
           System.err.println(t.getMessage());
           return null;
