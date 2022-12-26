@@ -1,6 +1,10 @@
 package fr.uge.clonewar;
 
-import fr.uge.clonewar.backend.database.*;
+
+import fr.uge.clonewar.backend.database.ArtefactTable;
+import fr.uge.clonewar.backend.database.Database;
+import fr.uge.clonewar.backend.database.FileTable;
+import fr.uge.clonewar.backend.database.InstructionTable;
 import io.helidon.dbclient.jdbc.JdbcDbClientProviderBuilder;
 import org.objectweb.asm.*;
 
@@ -350,6 +354,7 @@ public class ReadByteCode {
   }
 
   public static void main(String[] args) throws IOException {
+
     var dbClient = JdbcDbClientProviderBuilder.create()
         .url("jdbc:sqlite:cloneWar.db")
         .build();

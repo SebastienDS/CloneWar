@@ -110,8 +110,9 @@ public class InstructionTable {
     var query = """
       SELECT line, hash
       FROM file AS f
-      NATURAL JOIN instruction AS i ON f.id = i.fileId
-      WHERE filename = ?
+      JOIN artefact AS a ON f.artefactId = a.id
+      JOIN instruction as i ON i.fileId = f.id
+      WHERE a.jarName = ?
       """;
     return dbClient.execute(exec -> exec.query(query, filename))
         .map(dbRow -> new Instruction(
@@ -119,7 +120,7 @@ public class InstructionTable {
             dbRow.column("hash").as(Integer.class))
         ).collectList()
         .exceptionally((t -> {
-          System.err.println(t.getMessage());
+            t.printStackTrace();
           return null;
         })).await();
   }
