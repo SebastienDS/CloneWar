@@ -8,8 +8,6 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.util.ArrayList;
 
-import static fr.uge.clonewar.ReadByteCode.consumeInstructions;
-
 
 public class ReadByteCodeTest {
 
@@ -60,12 +58,9 @@ public class ReadByteCodeTest {
       var l1 = new ArrayList<Instruction>();
       var l2 = new ArrayList<Instruction>();
       System.out.println(readByteCode);
-      readByteCode.forEach((f, iterator) -> {
-        consumeInstructions(iterator, l1::add);
-      });
-      readByteCode2.forEach((f, iterator) -> {
-        consumeInstructions(iterator, l2::add);
-      });
+      readByteCode.forEach((f, instruction) -> l1.add(instruction));
+      readByteCode2.forEach((f, instruction) -> l2.add(instruction));
+
       System.out.println(l1);
       System.out.println(l2);
       var result = Karp.rabinKarp(l1, l2);

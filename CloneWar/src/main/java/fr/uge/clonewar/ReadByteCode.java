@@ -16,6 +16,7 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -34,7 +35,14 @@ public class ReadByteCode {
     this.jar = jar;
   }
 
-  public void forEach(BiConsumer<? super String, ? super Iterator<ReadByteCode.Tuple>> consumer) {
+  public void forEach(BiConsumer<? super String, ? super Instruction> consumer) {
+    Objects.requireNonNull(consumer);
+    forEachIterator((f, iterator) ->
+        consumeInstructions(iterator, instruction -> consumer.accept(f, instruction)));
+  }
+
+
+  private void forEachIterator(BiConsumer<? super String, ? super Iterator<ReadByteCode.Tuple>> consumer) {
     Objects.requireNonNull(consumer);
     stream()
         .forEach(entry -> consumer.accept(entry.getKey(), entry.getValue()));
@@ -360,7 +368,6 @@ public class ReadByteCode {
   }
 
   public static void main(String[] args) throws IOException {
-
     var dbClient = JdbcDbClientProviderBuilder.create()
         .url("jdbc:sqlite:cloneWar.db")
         .build();
@@ -383,18 +390,15 @@ public class ReadByteCode {
 
     var map = db.fileTable().insertAll(files);
 
-    readByteCode.forEach((f, iterator) -> {
-      var filename = extractExtension(f);
-      var fileId = map.get(filename.getKey());
-      if (fileId == null) {
-        System.err.println("File " + f + " ignored");
-        return;
-      }
+    readByteCode.forEach((f, instruction) -> {
+        var filename = extractExtension(f);
+        var fileId = map.get(filename.getKey());
+        if (fileId == null) {
+          return;
+        }
 
-      consumeInstructions(iterator, instruction -> { // TODO should be done internally
         var row = new InstructionTable.InstructionRow(instruction, fileId);
         db.instructionTable().bufferedInsert(row);
-      });
     });
 
     db.instructionTable().flushBuffer();
