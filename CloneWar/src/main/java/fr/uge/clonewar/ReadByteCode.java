@@ -16,10 +16,8 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 public class ReadByteCode {
@@ -40,7 +38,6 @@ public class ReadByteCode {
     forEachIterator((f, iterator) ->
         consumeInstructions(iterator, instruction -> consumer.accept(f, instruction)));
   }
-
 
   private void forEachIterator(BiConsumer<? super String, ? super Iterator<ReadByteCode.Tuple>> consumer) {
     Objects.requireNonNull(consumer);

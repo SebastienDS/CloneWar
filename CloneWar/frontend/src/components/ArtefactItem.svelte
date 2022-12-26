@@ -1,7 +1,26 @@
 <script>
-  export let name = "";
+  import { link, location } from 'svelte-spa-router';
+  import ArtefactDetail from './ArtefactDetail.svelte';
+
+  export let item;
+
+
+  $: isMyArtefact = $location.endsWith(`/${item.id}`);
+  $: activeClass = isMyArtefact ? "active" : "";
 </script>
 
-<div class="has-background-danger row has-text-centered is-clickable">
-  {name}
-</div>
+<a href="/artefact/{item.id}" use:link class="has-text-black">
+  <div class="{activeClass} bg row has-text-centered">
+    <ArtefactDetail {item}/>
+  </div>
+</a>
+
+<style>
+  .bg {
+    background-color: #fff;
+  }
+
+  .active {
+    background-color: deeppink;
+  }
+</style>
