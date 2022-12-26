@@ -109,7 +109,6 @@ public class ReadByteCode {
   private TreeMap<Integer, List<String>> analyzeByteCode(InputStream inputStream) throws IOException {
     var instructions = new TreeMap<Integer, List<String>>();
     line = 0;
-    instructions.put(0, new ArrayList<>()); // init first line
 
     var classReader = new ClassReader(inputStream);
     classReader.accept(new ClassVisitor(Opcodes.ASM9) {
@@ -145,49 +144,56 @@ public class ReadByteCode {
           return new MethodVisitor(Opcodes.ASM9) {
             @Override
             public void visitInsn(int opcode) {
-              instructions.get(line).add(opcodeToString(opcode));
+              instructions.computeIfAbsent(line, k -> new ArrayList<>())
+                  .add(opcodeToString(opcode));
             }
 
             @Override
             public void visitMethodInsn(int opcode, String owner, String name, String descriptor, boolean isInterface) {
-              instructions.get(line).add(opcodeToString(opcode) + " " + name);
+              instructions.computeIfAbsent(line, k -> new ArrayList<>())
+                  .add(opcodeToString(opcode) + " " + name);
             }
 
             @Override
             public void visitIntInsn(int opcode, int operand) {
-              instructions.get(line).add(opcodeToString(opcode) + " " + operand);
+              instructions.computeIfAbsent(line, k -> new ArrayList<>())
+                  .add(opcodeToString(opcode) + " " + operand);
             }
 
             @Override
             public void visitVarInsn(int opcode, int varIndex) {
-              instructions.get(line).add(opcodeToString(opcode) + " " + varIndex);
+              instructions.computeIfAbsent(line, k -> new ArrayList<>())
+                  .add(opcodeToString(opcode) + " " + varIndex);
             }
 
             @Override
             public void visitTypeInsn(int opcode, String type) {
-              instructions.get(line).add(opcodeToString(opcode));
+              instructions.computeIfAbsent(line, k -> new ArrayList<>())
+                  .add(opcodeToString(opcode));
             }
 
             @Override
             public void visitFieldInsn(int opcode, String owner, String name, String descriptor) {
-              instructions.get(line).add(opcodeToString(opcode) + " " + descriptor);
+              instructions.computeIfAbsent(line, k -> new ArrayList<>())
+                  .add(opcodeToString(opcode) + " " + descriptor);
             }
 
             @Override
             public void visitJumpInsn(int opcode, Label label) {
-              instructions.get(line).add(opcodeToString(opcode));
+              instructions.computeIfAbsent(line, k -> new ArrayList<>())
+                  .add(opcodeToString(opcode));
             }
 
             @Override
             public void visitInvokeDynamicInsn(String name, String descriptor, Handle bootstrapMethodHandle,
                                                Object ... bootstrapMethodArguments){
-              instructions.get(line).add(opcodeToString(Opcodes.INVOKEDYNAMIC) + " " + name);
+              instructions.computeIfAbsent(line, k -> new ArrayList<>())
+                  .add(opcodeToString(Opcodes.INVOKEDYNAMIC) + " " + name);
             }
 
             @Override
             public void visitLineNumber(int visitedLine, Label label) {
               line = visitedLine;
-              instructions.putIfAbsent(line, new ArrayList<>());
             }
           };
         }
