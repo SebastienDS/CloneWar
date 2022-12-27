@@ -1,7 +1,9 @@
 package fr.uge.clonewar.backend.database;
 
+import fr.uge.clonewar.backend.model.Artefact;
 import io.helidon.dbclient.DbClient;
 
+import java.util.List;
 import java.util.Objects;
 
 public class DetailTable {
@@ -31,6 +33,19 @@ public class DetailTable {
 
   public void insert(DetailRow detail) {
     Objects.requireNonNull(detail);
+    throw new UnsupportedOperationException();
+  }
+
+  public List<Artefact> getAll() {
+    return dbClient.execute(exec -> exec.query("SELECT id, jarName FROM artefact"))
+        .map(dbRow -> new Artefact(
+            dbRow.column("id").as(Integer.class),
+            dbRow.column("jarName").as(String.class))
+        ).collectList()
+        .exceptionally((t -> {
+          t.printStackTrace();
+          return null;
+        })).await();
   }
 
 }
