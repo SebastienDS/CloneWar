@@ -2,13 +2,12 @@ package fr.uge.clonewar.backend;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
+import fr.uge.clonewar.Artefact;
 import fr.uge.clonewar.ReadByteCode;
 import fr.uge.clonewar.backend.database.ArtefactTable;
 import fr.uge.clonewar.backend.database.Database;
 import fr.uge.clonewar.backend.database.FileTable;
 import fr.uge.clonewar.backend.database.InstructionTable;
-import fr.uge.clonewar.backend.model.Artefact;
 import io.helidon.common.configurable.ThreadPoolSupplier;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
@@ -21,20 +20,12 @@ import io.helidon.webserver.ServerResponse;
 import io.helidon.webserver.Service;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 
 
 public final class ApiService implements Service {
-  private record Artefact(Path main, Path source) {
-    public Artefact {
-      Objects.requireNonNull(main);
-      Objects.requireNonNull(source);
-    }
-  }
-
   private final Database db;
   private final FileStorage storage;
   private final ExecutorService executor = ThreadPoolSupplier.create("multipart-thread-pool").get();

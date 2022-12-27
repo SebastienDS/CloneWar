@@ -50,6 +50,14 @@ public class Server {
     return startServer(db, config);
   }
 
+  public static Single<WebServer> startTestServer() {
+    var config = Config.create();
+    var dbClient = DbClient.create(config.get("db-test"));
+
+    var db = new Database(dbClient);
+    return startServer(db, config);
+  }
+
   private static Routing createRouting(Database db, FileStorage storage) {
     var staticContent = StaticContentSupport.builder("/dist")
         .welcomeFileName("index.html")

@@ -1,18 +1,12 @@
 package fr.uge.clonewar;
 
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import fr.uge.clonewar.backend.database.ArtefactTable;
 import fr.uge.clonewar.backend.database.Database;
 import fr.uge.clonewar.backend.database.FileTable;
 import fr.uge.clonewar.backend.database.InstructionTable;
-import fr.uge.clonewar.backend.model.Artefact;
 import io.helidon.config.Config;
 import io.helidon.dbclient.DbClient;
-import io.helidon.dbclient.jdbc.JdbcDbClientProviderBuilder;
 import org.objectweb.asm.*;
 
 import java.io.*;
