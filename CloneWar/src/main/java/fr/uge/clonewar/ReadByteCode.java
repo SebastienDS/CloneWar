@@ -16,10 +16,8 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 public class ReadByteCode {
@@ -441,7 +439,7 @@ public class ReadByteCode {
       return;
     }
     var hash = 0;
-    var size = 5;
+    var size = 1;
     var fifo = new ArrayDeque<Instruction>(size);
     for (int i = 0; i < size; i++) {
       if (instructions.hasNext()) {

@@ -11,8 +11,8 @@ public class Karp {
   public static Map.Entry<HashMap<Integer, Set<Integer>>, Integer> rabinKarp(List<Instruction> listTuple1, List<Instruction> listTuple2) {
     var countSameInstr = 0;
     var mapIndex = new HashMap<Integer, Set<Integer>>();
-    for (var tuple2: listTuple2) {
-      for(var tuple1: listTuple1){
+    for (var tuple1: listTuple1) {
+      for(var tuple2: listTuple2){
         if(tuple1.hash() == tuple2.hash()){
           countSameInstr += 1;
           mapIndex.computeIfAbsent(tuple2.line(), integer -> new HashSet<>()).add(tuple1.line());
