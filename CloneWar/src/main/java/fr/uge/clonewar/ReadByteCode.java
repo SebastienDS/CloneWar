@@ -5,6 +5,8 @@ import fr.uge.clonewar.backend.database.ArtefactTable;
 import fr.uge.clonewar.backend.database.Database;
 import fr.uge.clonewar.backend.database.FileTable;
 import fr.uge.clonewar.backend.database.InstructionTable;
+import io.helidon.config.Config;
+import io.helidon.dbclient.DbClient;
 import io.helidon.dbclient.jdbc.JdbcDbClientProviderBuilder;
 import org.objectweb.asm.*;
 
@@ -38,7 +40,6 @@ public class ReadByteCode {
     forEachIterator((f, iterator) ->
         consumeInstructions(iterator, instruction -> consumer.accept(f, instruction)));
   }
-
 
   private void forEachIterator(BiConsumer<? super String, ? super Iterator<ReadByteCode.Tuple>> consumer) {
     Objects.requireNonNull(consumer);
@@ -366,9 +367,7 @@ public class ReadByteCode {
   }
 
   public static void main(String[] args) throws IOException {
-    var dbClient = JdbcDbClientProviderBuilder.create()
-        .url("jdbc:sqlite:cloneWar.db")
-        .build();
+    var dbClient = DbClient.create(Config.create().get("db-test"));
     var db = new Database(dbClient);
 
     var sources = extractSources(Path.of("junit-jupiter-api-5.9.1-sources.jar"));

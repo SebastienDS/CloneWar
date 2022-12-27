@@ -1,27 +1,35 @@
-<script>
+<script lang="ts">
   import ArtefactItem from "./ArtefactItem.svelte";
+
 
   const items = [];
   for (let index = 1; index < 50; index++) {
-    items.push("Artefact " + index);
+    items.push({
+      name: "Artefact " + index,
+      id: index
+    });
   }
+
 </script>
 
 <div class="has-background-info rows scrollable">
   {#each items as item}
     <div class="padding margin">
-      <ArtefactItem name={item}/>
+      <ArtefactItem {item}/>
     </div>
 	{/each}
 </div>
 
-<style scoped>
+<style>
   .padding {
-    padding: 15px 5px;
+    padding: 5px 10px;
   }
 
-  .scrollable {
-    height: 100%;
-    overflow-y: auto;
+  .padding:first-child {
+    padding-top: 10px;
+  }
+
+  .padding:last-child {
+    padding-bottom: 10px;
   }
 </style>

@@ -1,12 +1,14 @@
 package fr.uge.clonewar.backend;
 
 import fr.uge.clonewar.backend.database.Database;
+import io.helidon.common.LogConfig;
 import io.helidon.common.reactive.Single;
 import io.helidon.config.Config;
-import io.helidon.dbclient.jdbc.JdbcDbClientProviderBuilder;
+import io.helidon.dbclient.DbClient;
 import io.helidon.media.jsonp.JsonpSupport;
 import io.helidon.media.multipart.MultiPartSupport;
 import io.helidon.openapi.OpenAPISupport;
+import io.helidon.tracing.TracerBuilder;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.WebServer;
 import io.helidon.webserver.staticcontent.StaticContentSupport;
@@ -42,9 +44,8 @@ public class Server {
 
   public static Single<WebServer> startServer() {
     var config = Config.create();
-    var dbClient = JdbcDbClientProviderBuilder.create()
-        .url("jdbc:sqlite:cloneWar.db")
-        .build();
+    var dbClient = DbClient.create(config.get("db"));
+
     var db = new Database(dbClient);
     return startServer(db, config);
   }
