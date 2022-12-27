@@ -2,17 +2,19 @@
   import ArtefactItem from "./ArtefactItem.svelte";
 
 
-  const items = [];
-  for (let index = 1; index < 50; index++) {
-    items.push({
-      name: "Artefact " + index,
-      id: index
-    });
-  }
+  let items = [];
+
+  const a = fetch("/api/artefacts")
+    .then(res => res.json())
+    .then(json => {
+      console.log(json)
+      items = json
+    })
+    .catch(error => console.error(error))
 
 </script>
 
-<div class="has-background-info rows scrollable">
+<div class="has-background-info rows">
   {#each items as item}
     <div class="padding margin">
       <ArtefactItem {item}/>

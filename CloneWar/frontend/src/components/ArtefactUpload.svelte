@@ -22,8 +22,12 @@
     }
 
     fetch("/api/analyze", options)
-      .then(res => console.log(res))
-      .catch(error => console.log(error))
+      .then(res => res.json())
+      .then(json => {
+        console.log(json);
+        location.reload();
+      })
+      .catch(error => console.error(error))
   }
 </script>
 

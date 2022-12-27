@@ -17,6 +17,5 @@ html, body, #app, .full-height {
 }
 
 .scrollable {
-  height: 100%;
   overflow-y: auto;
 }

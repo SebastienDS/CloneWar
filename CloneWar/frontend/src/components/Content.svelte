@@ -32,7 +32,6 @@
     <ArtefactDetail item={details}/>
   </div>
 
-
   <div class="row rows has-background-grey-light">
     {#each items as item}
       <div class="row radius">
