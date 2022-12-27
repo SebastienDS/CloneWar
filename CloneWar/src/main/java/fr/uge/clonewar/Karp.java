@@ -1,7 +1,8 @@
 package fr.uge.clonewar;
 
 import fr.uge.clonewar.backend.database.Database;
-import io.helidon.dbclient.jdbc.JdbcDbClientProviderBuilder;
+import io.helidon.config.Config;
+import io.helidon.dbclient.DbClient;
 
 import java.io.IOException;
 import java.util.*;
@@ -26,9 +27,7 @@ public class Karp {
 
   //pour les tests
   public static void main(String[] args) throws IOException {
-    var dbClient = JdbcDbClientProviderBuilder.create()
-        .url("jdbc:sqlite:cloneWar.db")
-        .build();
+    var dbClient = DbClient.create(Config.create().get("db-test"));
     var db = new Database(dbClient);
     db.instructionTable().flushBuffer();
     var listHashDoc1 = db.instructionTable().getLineAndHash("cc1.jar");

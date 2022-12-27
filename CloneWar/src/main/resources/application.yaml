@@ -1,3 +1,17 @@
 server:
   host: 0.0.0.0
   port: 8080
+
+db:
+  source: jdbc
+  connection:
+    url: "jdbc:sqlite:cloneWar.db"
+    username: ""
+    password: ""
+
+db-test:
+  source: jdbc
+  connection:
+    url: "jdbc:sqlite:cloneWarTest.db"
+    username: ""
+    password: ""
