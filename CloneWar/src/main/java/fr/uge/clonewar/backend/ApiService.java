@@ -43,7 +43,7 @@ public final class ApiService implements Service {
     rules.get("/", (req, res) -> res.send("Hello World"))
         .post("/analyze", (req, res) -> interceptError(req, res, this::analyze))
         .get("/artefacts", (req, res) -> interceptError(req, res, this::listArtefacts))
-        .get("/clones", (req, res) -> interceptError(req, res, this::listClones));
+        .get("/clones/{id}", (req, res) -> interceptError(req, res, this::listClones));
   }
 
   @FunctionalInterface
@@ -156,7 +156,7 @@ public final class ApiService implements Service {
   }
 
   private void listClones(ServerRequest request, ServerResponse response) throws IOException {
-    var id = Integer.parseInt(request.queryParams().toMap().get("id").get(0));
+    var id = Integer.parseInt(request.path().param("id"));
     var clones = db.cloneTable().getAll(id);
     var reference = db.detailTable().get(id);
     var json = toJson(new Clones(reference, clones));

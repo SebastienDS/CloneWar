@@ -14,7 +14,7 @@
   $: allClones = [];
 
   const fetchItems = (id) => {
-    fetch("/api/clones?id=" + id)
+    fetch("/api/clones/" + id)
     .then(res => res.json())
     .then(json => {
       console.log(json)
