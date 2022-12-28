@@ -35,7 +35,7 @@ public class Karp {
     var a = rabinKarp(listHashDoc1, listHashDoc2);
   }
 
-  static double average(int succeed, int total){
+  public static double average(int succeed, int total){
     return succeed * 100. / total;
   }
 }

@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Objects;
 
 public class DetailTable {
-
   public record DetailRow(String author, int artefactId) {
     public DetailRow {
       Objects.requireNonNull(author);
@@ -48,4 +47,27 @@ public class DetailTable {
         })).await();
   }
 
+  public List<Artefact> getAll(int withoutMe) {
+    return dbClient.execute(exec -> exec.query("SELECT id, jarName FROM artefact WHERE id != ?", withoutMe))
+        .map(dbRow -> new Artefact(
+            dbRow.column("id").as(Integer.class),
+            dbRow.column("jarName").as(String.class))
+        ).collectList()
+        .exceptionally((t -> {
+          t.printStackTrace();
+          return null;
+        })).await();
+  }
+
+  public Artefact get(int id) {
+    return dbClient.execute(exec -> exec.query("SELECT id, jarName FROM artefact WHERE id = ?", id))
+        .first()
+        .map(dbRow -> new Artefact(
+            dbRow.column("id").as(Integer.class),
+            dbRow.column("jarName").as(String.class))
+        ).exceptionally((t -> {
+          t.printStackTrace();
+          return null;
+        })).await();
+  }
 }

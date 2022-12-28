@@ -26,7 +26,6 @@ public class InstructionTable {
   public InstructionTable(DbClient dbclient) {
     Objects.requireNonNull(dbclient);
     this.dbClient = dbclient;
-
     createTable();
   }
 

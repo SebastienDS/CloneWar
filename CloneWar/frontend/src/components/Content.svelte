@@ -3,42 +3,45 @@
 
   export let params;
 
+  $: id = params.id;
+
   let showMore = false;
+  let reference = {
+    id: 0,
+    name: ""
+  };
 
-  $: details = {
-    id: params.id,
-    name: `Artefact ${params.id}`,
+  $: allClones = [];
+
+  const fetchItems = (id) => {
+    fetch("/api/clones?id=" + id)
+    .then(res => res.json())
+    .then(json => {
+      console.log(json)
+      reference = json.reference;
+      allClones = json.clones;
+    })
+    .catch(error => console.error(error))
+    return true;
   }
 
-  const getItems = (id) => {
-    const items = [];
-    showMore = false;
-    for (let index = id; index < 50; index++) {
-      items.push({
-        name: "Artefact " + index,
-        id: index
-      });
-    }
-    return items;
-  }
-
-  $: allItems = getItems(params.id);
-  $: items = showMore ? allItems : allItems.slice(0, 5);
+  $: updated = fetchItems(id);
+  $: items = showMore ? allClones : allClones.slice(0, 5);
 </script>
 
 
 <div class="container has-background-grey full-height scrollable rows">
   <div class="has-background-grey-lighter row space">
-    <ArtefactDetail item={details}/>
+    <ArtefactDetail item={reference}/>
   </div>
 
   <div class="row rows has-background-grey-light">
     {#each items as item}
       <div class="row radius">
         <div class="is-flex is-justify-content-space-around">
-          <ArtefactDetail {item}/>
+          <ArtefactDetail item={item.artefact}/>
           <div class="is-flex is-justify-content-center is-align-items-center">
-            100 %
+            {item.percentage} %
           </div>
         </div>
       </div>

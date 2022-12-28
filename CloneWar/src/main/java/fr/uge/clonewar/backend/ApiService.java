@@ -3,11 +3,10 @@ package fr.uge.clonewar.backend;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.uge.clonewar.Artefact;
+import fr.uge.clonewar.Karp;
 import fr.uge.clonewar.ReadByteCode;
-import fr.uge.clonewar.backend.database.ArtefactTable;
-import fr.uge.clonewar.backend.database.Database;
-import fr.uge.clonewar.backend.database.FileTable;
-import fr.uge.clonewar.backend.database.InstructionTable;
+import fr.uge.clonewar.backend.database.*;
+import fr.uge.clonewar.backend.model.Clones;
 import io.helidon.common.configurable.ThreadPoolSupplier;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
@@ -40,15 +39,28 @@ public final class ApiService implements Service {
   @Override
   public void update(Routing.Rules rules) {
     rules.get("/", (req, res) -> res.send("Hello World"))
-        .post("/analyze", this::analyze)
-        .get("/artefacts", this::listArtefacts);
+        .post("/analyze", (req, res) -> interceptError(req, res, this::analyze))
+        .get("/artefacts", (req, res) -> interceptError(req, res, this::listArtefacts))
+        .get("/clones", (req, res) -> interceptError(req, res, this::listClones));
+  }
+
+  @FunctionalInterface
+  private interface Handler {
+    void handle(ServerRequest request, ServerResponse response) throws Exception;
+  }
+
+  private static void interceptError(ServerRequest request, ServerResponse response, Handler consumer) {
+    try {
+      consumer.handle(request, response);
+    } catch (Throwable e) { // 😭🥺
+      response.send(e);
+    }
   }
 
   private void analyze(ServerRequest request, ServerResponse response) {
     downloadArtefact(request)
         .onError(response::send)
         .thenAccept(artefact -> {
-          System.out.println("Analyzing... " + artefact);
           var jarName = artefact.main().getFileName().toString();
 
           var readByteCode = new ReadByteCode(artefact.main());
@@ -86,7 +98,7 @@ public final class ApiService implements Service {
             storage.delete(artefact.main());
             storage.delete(artefact.source());
 
-            System.out.println("Done ! ");
+            computeClones(artefactId, jarName);
 
             var insertedArtefact = new fr.uge.clonewar.backend.model.Artefact(artefactId, jarName);
 
@@ -100,6 +112,19 @@ public final class ApiService implements Service {
             response.send(e);
           }
         });
+  }
+
+  private void computeClones(int artefactId, String jarName) {
+    var artefacts = db.detailTable().getAll(artefactId);
+    var instructionsReference = db.instructionTable().getLineAndHash(jarName);
+
+    for (var artefact : artefacts) {
+      var instruction = db.instructionTable().getLineAndHash(artefact.name());
+      var result = Karp.rabinKarp(instructionsReference, instruction);
+      var succeed = result.getValue();
+      var percentage = Karp.average(succeed, instructionsReference.size());
+      db.cloneTable().insert(new CloneTable.CloneRow(artefactId, artefact.id(), (int)percentage));
+    }
   }
 
   private Single<Artefact> downloadArtefact(ServerRequest request) {
@@ -117,14 +142,18 @@ public final class ApiService implements Service {
         .map(files -> new Artefact(files.get(0), files.get(1)));
   }
 
-  private void listArtefacts(ServerRequest request, ServerResponse response) {
+  private void listArtefacts(ServerRequest request, ServerResponse response) throws IOException {
     var artefacts = db.detailTable().getAll();
-    try {
-      var json = toJson(artefacts);
-      response.status(Http.Status.OK_200).send(json);
-    } catch (JsonProcessingException e) {
-      throw new AssertionError(e);
-    }
+    var json = toJson(artefacts);
+    response.status(Http.Status.OK_200).send(json);
+  }
+
+  private void listClones(ServerRequest request, ServerResponse response) throws IOException {
+    var id = Integer.parseInt(request.queryParams().toMap().get("id").get(0));
+    var clones = db.cloneTable().getAll(id);
+    var reference = db.detailTable().get(id);
+    var json = toJson(new Clones(reference, clones));
+    response.status(Http.Status.OK_200).send(json);
   }
 
   private static String toJson(Object object) throws JsonProcessingException {
