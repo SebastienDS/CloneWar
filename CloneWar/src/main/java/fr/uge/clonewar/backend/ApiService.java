@@ -20,8 +20,10 @@ import io.helidon.webserver.Service;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
+import java.util.stream.Collectors;
 
 
 public final class ApiService implements Service {
@@ -53,6 +55,7 @@ public final class ApiService implements Service {
     try {
       consumer.handle(request, response);
     } catch (Throwable e) { // 😭🥺
+      e.printStackTrace();
       response.send(e);
     }
   }
@@ -62,16 +65,20 @@ public final class ApiService implements Service {
         .onError(response::send)
         .thenAccept(artefact -> {
           var jarName = artefact.main().getFileName().toString();
+          var now = System.currentTimeMillis();
 
           var readByteCode = new ReadByteCode(artefact.main());
           try {
-            readByteCode.analyze();
-
-            var sources = ReadByteCode.extractSources(artefact.source());
-
             var artefactId = db.artefactTable().insert(
                 new ArtefactTable.ArtefactRow(jarName)
             );
+            db.detailTable().insert(new DetailTable.DetailRow(artefactId, now));
+
+            var sources = ReadByteCode.extractSources(artefact.source());
+            var javaFiles = sources.stream()
+                .map(Map.Entry::getKey)
+                .map(file -> ReadByteCode.extractExtension(file).getKey())
+                .collect(Collectors.toSet());
 
             var files = sources.stream()
                 .map(entry -> {
@@ -81,6 +88,8 @@ public final class ApiService implements Service {
                 .toList();
 
             var map = db.fileTable().insertAll(files);
+
+            readByteCode.analyze(javaFiles);
 
             readByteCode.forEach((f, instruction) -> {
               var filename = ReadByteCode.extractExtension(f);
@@ -98,16 +107,14 @@ public final class ApiService implements Service {
             storage.delete(artefact.main());
             storage.delete(artefact.source());
 
-            computeClones(artefactId, jarName);
 
-            var insertedArtefact = new fr.uge.clonewar.backend.model.Artefact(artefactId, jarName);
+            new Thread(() -> { // done in background
+              computeClones(artefactId, jarName);
+            }).start();
 
-            try {
-              var json = toJson(insertedArtefact);
-              response.status(Http.Status.OK_200).send(json);
-            } catch (JsonProcessingException e) {
-              throw new AssertionError(e);
-            }
+            var insertedArtefact = new fr.uge.clonewar.backend.model.Artefact(artefactId, jarName, now);
+            var json = toJson(insertedArtefact);
+            response.status(Http.Status.OK_200).send(json);
           } catch (IOException e) {
             response.send(e);
           }

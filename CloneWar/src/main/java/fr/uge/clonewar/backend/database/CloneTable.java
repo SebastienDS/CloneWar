@@ -5,7 +5,6 @@ import fr.uge.clonewar.backend.model.Clones;
 import io.helidon.dbclient.DbClient;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 public class CloneTable {
@@ -43,17 +42,19 @@ public class CloneTable {
 
   public List<Clones.Clone> getAll(int id) {
     var query = """
-        SELECT cloneId, jarName, percentage
+        SELECT cloneId, jarName, insertionDate, percentage
         FROM clone
         JOIN artefact ON id = cloneId
+        NATURAL JOIN detail
         WHERE artefactId = ?
-        ORDER BY percentage DESC
+        ORDER BY percentage DESC, jarName ASC
         """;
     return dbClient.execute(exec -> exec.query(query, id))
         .map(dbRow -> new Clones.Clone(
               new Artefact(
                 dbRow.column("cloneId").as(Integer.class),
-                dbRow.column("jarName").as(String.class)
+                dbRow.column("jarName").as(String.class),
+                dbRow.column("insertionDate").as(Long.class)
               ),
               dbRow.column("percentage").as(Integer.class)
             )

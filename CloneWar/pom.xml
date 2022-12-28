@@ -94,6 +94,7 @@
           <release>19</release>
           <compilerArgs>
             <compilerArg>--enable-preview</compilerArg>
+            <compilerArg>-Xlint:all</compilerArg>
           </compilerArgs>
         </configuration>
       </plugin>

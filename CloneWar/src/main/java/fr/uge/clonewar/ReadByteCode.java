@@ -1,23 +1,15 @@
 package fr.uge.clonewar;
 
 
-import fr.uge.clonewar.backend.database.ArtefactTable;
-import fr.uge.clonewar.backend.database.Database;
-import fr.uge.clonewar.backend.database.FileTable;
-import fr.uge.clonewar.backend.database.InstructionTable;
-import io.helidon.config.Config;
-import io.helidon.dbclient.DbClient;
 import org.objectweb.asm.*;
 
 import java.io.*;
 import java.lang.module.ModuleFinder;
-import java.lang.module.ModuleReader;
 import java.lang.reflect.Modifier;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -72,43 +64,22 @@ public class ReadByteCode {
     return jar;
   }
 
-  public void analyze() throws IOException {
+  public void analyze(Set<String> javaFiles) throws IOException {
+    Objects.requireNonNull(javaFiles);
+
     var finder = ModuleFinder.of(jar);
     var moduleReference = finder.findAll().stream().findFirst().orElseThrow();
 
     try (var reader = moduleReference.open()) {
-      var projectPackage = getProjectPackage(reader);
-      var baseFile = projectPackage == null ? "" : projectPackage.replace('.', '/');
-
       var jarFiles = reader.list()
-          .filter(f -> f.startsWith(baseFile) && f.endsWith(".class"));
+          .filter(f -> f.endsWith(".class"))
+          .filter(f -> javaFiles.contains(extractExtension(f).getKey()));
       for (var filename: (Iterable<String>) jarFiles::iterator) {
         try (var inputStream = reader.open(filename).orElseThrow()) {
           var instructions = analyzeByteCode(inputStream);
           files.put(filename, instructions);
         }
       }
-    }
-  }
-
-  private static String getProjectPackage(ModuleReader reader) throws IOException {
-    var pom = reader.list()
-        .filter(f -> f.contains("pom.xml"))
-        .findFirst();
-    if (pom.isEmpty()) {
-      return null;
-    }
-
-    try (var inputStream = reader.open(pom.get()).orElseThrow();
-         var bufferedReader = new BufferedReader(new InputStreamReader(inputStream))) {
-      var content = bufferedReader.lines().collect(Collectors.joining("\n"));
-
-      var pattern = Pattern.compile("<groupId>((\\w+\\.?)+)</groupId>");
-      var matcher = pattern.matcher(content);
-      if (matcher.find()) {
-        return matcher.group(1);
-      }
-      return null;
     }
   }
 
@@ -363,41 +334,6 @@ public class ReadByteCode {
       case Opcodes.I2C -> "I2C";
       default -> throw new IllegalStateException("Unexpected value: " + opcode);
     };
-  }
-
-  public static void main(String[] args) throws IOException {
-    var dbClient = DbClient.create(Config.create().get("db-test"));
-    var db = new Database(dbClient);
-
-    var sources = extractSources(Path.of("junit-jupiter-api-5.9.1-sources.jar"));
-    var readByteCode = new ReadByteCode(Path.of("junit-jupiter-api-5.9.1.jar"));
-    readByteCode.analyze();
-
-    var artefactId = db.artefactTable().insert(
-        new ArtefactTable.ArtefactRow(readByteCode.jar().getFileName().toString())
-    );
-
-    var files = sources.stream()
-        .map(entry -> {
-          var file = extractExtension(entry.getKey());
-          return new FileTable.FileRow(file.getKey(), file.getValue(), entry.getValue(), artefactId);
-        })
-        .toList();
-
-    var map = db.fileTable().insertAll(files);
-
-    readByteCode.forEach((f, instruction) -> {
-        var filename = extractExtension(f);
-        var fileId = map.get(filename.getKey());
-        if (fileId == null) {
-          return;
-        }
-
-        var row = new InstructionTable.InstructionRow(instruction, fileId);
-        db.instructionTable().bufferedInsert(row);
-    });
-
-    db.instructionTable().flushBuffer();
   }
 
   public static Map.Entry<String, String> extractExtension(String filename) {

@@ -39,8 +39,10 @@
     {#each items as item}
       <div class="row radius">
         <div class="is-flex is-justify-content-space-around">
-          <ArtefactDetail item={item.artefact}/>
-          <div class="is-flex is-justify-content-center is-align-items-center">
+          <div class="is-flex is-justify-content-center is-align-items-center width">
+            <ArtefactDetail item={item.artefact}/>
+          </div>
+          <div class="is-flex is-justify-content-center is-align-items-center width">
             {item.percentage} %
           </div>
         </div>
@@ -60,5 +62,9 @@
 
   .space {
     padding: 25px;
+  }
+
+  .width {
+    width: 250px;
   }
 </style>
