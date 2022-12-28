@@ -50,7 +50,7 @@
     {/each}
   </div>
 
-  {#if !showMore}
+  {#if !showMore && allClones.length > items.length}
     <div class="row has-text-centered has-background-grey space"><button on:click={e => showMore = true}>Afficher tout</button></div>
   {/if}
 </div>

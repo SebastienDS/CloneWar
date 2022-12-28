@@ -3,9 +3,8 @@ package fr.uge.clonewar.backend;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.uge.clonewar.Artefact;
-import fr.uge.clonewar.Karp;
-import fr.uge.clonewar.ReadByteCode;
-import fr.uge.clonewar.backend.database.*;
+import fr.uge.clonewar.CloneDetectors;
+import fr.uge.clonewar.backend.database.Database;
 import fr.uge.clonewar.backend.model.Clones;
 import io.helidon.common.configurable.ThreadPoolSupplier;
 import io.helidon.common.http.DataChunk;
@@ -20,10 +19,8 @@ import io.helidon.webserver.Service;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
-import java.util.stream.Collectors;
 
 
 public final class ApiService implements Service {
@@ -64,74 +61,16 @@ public final class ApiService implements Service {
     downloadArtefact(request)
         .onError(response::send)
         .thenAccept(artefact -> {
-          var jarName = artefact.main().getFileName().toString();
-          var now = System.currentTimeMillis();
-
-          var readByteCode = new ReadByteCode(artefact.main());
           try {
-            var artefactId = db.artefactTable().insert(
-                new ArtefactTable.ArtefactRow(jarName)
-            );
-            db.detailTable().insert(new DetailTable.DetailRow(artefactId, now));
+            var indexedArtefact = CloneDetectors.indexArtefact(db, artefact);
+            CloneDetectors.computeClones(db, indexedArtefact.id(), indexedArtefact.name());
 
-            var sources = ReadByteCode.extractSources(artefact.source());
-            var javaFiles = sources.stream()
-                .map(Map.Entry::getKey)
-                .map(file -> ReadByteCode.extractExtension(file).getKey())
-                .collect(Collectors.toSet());
-
-            var files = sources.stream()
-                .map(entry -> {
-                  var file = ReadByteCode.extractExtension(entry.getKey());
-                  return new FileTable.FileRow(file.getKey(), file.getValue(), entry.getValue(), artefactId);
-                })
-                .toList();
-
-            var map = db.fileTable().insertAll(files);
-
-            readByteCode.analyze(javaFiles);
-
-            readByteCode.forEach((f, instruction) -> {
-              var filename = ReadByteCode.extractExtension(f);
-              var fileId = map.get(filename.getKey());
-              if (fileId == null) {
-                return;
-              }
-
-              var row = new InstructionTable.InstructionRow(instruction, fileId);
-              db.instructionTable().bufferedInsert(row);
-            });
-
-            db.instructionTable().flushBuffer();
-
-            storage.delete(artefact.main());
-            storage.delete(artefact.source());
-
-
-            new Thread(() -> { // done in background
-              computeClones(artefactId, jarName);
-            }).start();
-
-            var insertedArtefact = new fr.uge.clonewar.backend.model.Artefact(artefactId, jarName, now);
-            var json = toJson(insertedArtefact);
+            var json = toJson(indexedArtefact);
             response.status(Http.Status.OK_200).send(json);
           } catch (IOException e) {
             response.send(e);
           }
         });
-  }
-
-  private void computeClones(int artefactId, String jarName) {
-    var artefacts = db.detailTable().getAll(artefactId);
-    var instructionsReference = db.instructionTable().getLineAndHash(jarName);
-
-    for (var artefact : artefacts) {
-      var instruction = db.instructionTable().getLineAndHash(artefact.name());
-      var result = Karp.rabinKarp(instructionsReference, instruction);
-      var succeed = result.getValue();
-      var percentage = Karp.average(succeed, instructionsReference.size());
-      db.cloneTable().insert(new CloneTable.CloneRow(artefactId, artefact.id(), (int)percentage));
-    }
   }
 
   private Single<Artefact> downloadArtefact(ServerRequest request) {
