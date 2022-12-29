@@ -1,7 +1,9 @@
 package fr.uge.clonewar.backend.database;
 
+import fr.uge.clonewar.backend.model.Artefact;
 import io.helidon.dbclient.DbClient;
 
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -13,7 +15,7 @@ public class ArtefactTable {
    * Represents a Row of the Artefact entity.
    * @param jarName The artefact's name
    */
-  public record ArtefactRow(String jarName) {
+  public record ArtefactRow(String jarName, long insertionDate) {
     public ArtefactRow {
       Objects.requireNonNull(jarName);
     }
@@ -32,7 +34,7 @@ public class ArtefactTable {
   }
 
   private void createTable() {
-    dbClient.execute(exec -> exec.update("CREATE TABLE IF NOT EXISTS artefact(id integer, jarName VARCHAR, PRIMARY KEY(id))"))
+    dbClient.execute(exec -> exec.update("CREATE TABLE IF NOT EXISTS artefact(id INTEGER, jarName VARCHAR, insertionDate INTEGER, PRIMARY KEY(id))"))
         .exceptionally(t -> {
           System.err.println(t.getMessage());
           return null;
@@ -47,10 +49,63 @@ public class ArtefactTable {
   public int insert(ArtefactRow artefact) {
     Objects.requireNonNull(artefact);
     return dbClient.execute(exec ->
-            exec.query("INSERT INTO artefact(jarName) VALUES (?) RETURNING id", artefact.jarName)
+            exec.query("INSERT INTO artefact(jarName, insertionDate) VALUES (?, ?) RETURNING id", artefact.jarName, artefact.insertionDate)
         ).first()
         .map(row -> row.column("id").as(Integer.class))
         .await();
+  }
+
+  /**
+   * Gets all artefacts with details.
+   * @return The list of artefacts
+   */
+  public List<Artefact> getAll() {
+    return dbClient.execute(exec -> exec.query("SELECT id, jarName, insertionDate FROM artefact"))
+        .map(dbRow -> new Artefact(
+            dbRow.column("id").as(Integer.class),
+            dbRow.column("jarName").as(String.class),
+            dbRow.column("insertionDate").as(Long.class))
+        ).collectList()
+        .exceptionally((t -> {
+          t.printStackTrace();
+          return null;
+        })).await();
+  }
+
+  /**
+   * Gets all artefacts without a given artefact.
+   * @param withoutMe The id of the artefact to ignore 🥺
+   * @return The list of artefacts
+   */
+  public List<Artefact> getAll(int withoutMe) {
+    return dbClient.execute(exec -> exec.query("SELECT id, jarName, insertionDate FROM artefact WHERE id != ?", withoutMe))
+        .map(dbRow -> new Artefact(
+            dbRow.column("id").as(Integer.class),
+            dbRow.column("jarName").as(String.class),
+            dbRow.column("insertionDate").as(Long.class))
+        ).collectList()
+        .exceptionally((t -> {
+          t.printStackTrace();
+          return null;
+        })).await();
+  }
+
+  /**
+   * Gets the artefact details of the given id.
+   * @param id The id of an artefact
+   * @return The selected artefact details
+   */
+  public Artefact get(int id) {
+    return dbClient.execute(exec -> exec.query("SELECT id, jarName, insertionDate FROM artefact WHERE id = ?", id))
+        .first()
+        .map(dbRow -> new Artefact(
+            dbRow.column("id").as(Integer.class),
+            dbRow.column("jarName").as(String.class),
+            dbRow.column("insertionDate").as(Long.class))
+        ).exceptionally((t -> {
+          t.printStackTrace();
+          return null;
+        })).await();
   }
 
 }

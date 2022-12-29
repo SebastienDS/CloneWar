@@ -18,6 +18,7 @@ import io.helidon.webserver.ServerResponse;
 import io.helidon.webserver.Service;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
@@ -63,7 +64,9 @@ public final class ApiService implements Service {
 
   private void analyze(ServerRequest request, ServerResponse response) {
     downloadArtefact(request)
-        .onError(response::send)
+        .onError(t -> {
+          throw new RuntimeException(t);
+        })
         .thenAccept(artefact -> {
           try {
             System.out.println("Indexing artefact ... ");
@@ -74,7 +77,7 @@ public final class ApiService implements Service {
             var json = toJson(indexedArtefact);
             response.status(Http.Status.OK_200).send(json);
           } catch (IOException e) {
-            response.send(e);
+            throw new UncheckedIOException(e);
           }
         });
   }
@@ -95,7 +98,7 @@ public final class ApiService implements Service {
   }
 
   private void listArtefacts(ServerRequest request, ServerResponse response) throws IOException {
-    var artefacts = db.detailTable().getAll();
+    var artefacts = db.artefactTable().getAll();
     var json = toJson(artefacts);
     response.status(Http.Status.OK_200).send(json);
   }
@@ -103,7 +106,7 @@ public final class ApiService implements Service {
   private void listClones(ServerRequest request, ServerResponse response) throws IOException {
     var id = Integer.parseInt(request.path().param("id"));
     var clones = db.cloneTable().getAll(id);
-    var reference = db.detailTable().get(id);
+    var reference = db.artefactTable().get(id);
     var json = toJson(new Clones(reference, clones));
     response.status(Http.Status.OK_200).send(json);
   }

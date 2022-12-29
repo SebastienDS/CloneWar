@@ -9,7 +9,6 @@ import java.util.Objects;
  */
 public class Database {
   private final ArtefactTable artefactTable;
-  private final DetailTable detailTable;
   private final FileTable fileTable;
   private final InstructionTable instructionTable;
   private final CloneTable cloneTable;
@@ -22,7 +21,6 @@ public class Database {
     Objects.requireNonNull(dbClient);
 
     artefactTable = new ArtefactTable(dbClient);
-    detailTable = new DetailTable(dbClient);
     fileTable = new FileTable(dbClient);
     instructionTable = new InstructionTable(dbClient);
     cloneTable = new CloneTable(dbClient);
@@ -34,14 +32,6 @@ public class Database {
    */
   public ArtefactTable artefactTable() {
     return artefactTable;
-  }
-
-  /**
-   * Gets the detail table.
-   * @return The detail table
-   */
-  public DetailTable detailTable() {
-    return detailTable;
   }
 
   /**

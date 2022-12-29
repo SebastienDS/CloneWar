@@ -67,7 +67,6 @@ public class CloneTable {
         SELECT cloneId, jarName, insertionDate, percentage
         FROM clone
         JOIN artefact ON id = cloneId
-        NATURAL JOIN detail
         WHERE artefactId = ?
         ORDER BY percentage DESC, jarName ASC
         """;

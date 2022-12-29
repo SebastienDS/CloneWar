@@ -25,19 +25,13 @@ public class CloneDetectors {
     var jarName = artefact.main().getFileName().toString();
     var now = System.currentTimeMillis();
 
-    var artefactId = insertArtefact(db, jarName, now);
+    var artefactId = db.artefactTable().insert(new ArtefactTable.ArtefactRow(jarName, now));
 
     var sources = ReadByteCode.extractSources(artefact.source());
     var files = insertFiles(db, artefactId, sources);
 
     insertInstructions(db, artefact, files);
     return new fr.uge.clonewar.backend.model.Artefact(artefactId, jarName, now);
-  }
-
-  private static int insertArtefact(Database db, String jarName, long insertionDate) {
-    var artefactId = db.artefactTable().insert(new ArtefactTable.ArtefactRow(jarName));
-    db.detailTable().insert(new DetailTable.DetailRow(artefactId, insertionDate));
-    return artefactId;
   }
 
   private static Map<String, Integer> insertFiles(Database db, int artefactId, List<Map.Entry<String, String>> sources) {
@@ -75,7 +69,7 @@ public class CloneDetectors {
    */
   public static void computeClones(Database db, int artefactId) {
     Objects.requireNonNull(db);
-    var artefacts = db.detailTable().getAll(artefactId);
+    var artefacts = db.artefactTable().getAll(artefactId);
     var instructionsReference = db.instructionTable().getAll(artefactId);
 
     for (var artefact : artefacts) {
