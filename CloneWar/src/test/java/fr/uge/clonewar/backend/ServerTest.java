@@ -154,7 +154,6 @@ public class ServerTest {
       var artefacts = getArtefacts();
       var newArtefact = postArtefact(artefact);
 
-      // TODO clones should be computed in background so we can't get them like that :(
       var clones = getClones(newArtefact.id());
       assertEquals(clones.clones().size(), artefacts.size());
     }

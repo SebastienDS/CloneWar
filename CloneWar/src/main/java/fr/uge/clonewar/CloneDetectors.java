@@ -65,19 +65,21 @@ public class CloneDetectors {
   /**
    * Computes indexed artefacts similarity.
    * @param db The database
-   * @param artefactId The artefact reference
+   * @param reference The reference
+   * @param toCompute Artefacts to compute
    */
-  public static void computeClones(Database db, int artefactId) {
+  public static void computeClones(Database db, fr.uge.clonewar.backend.model.Artefact reference, List<fr.uge.clonewar.backend.model.Artefact> toCompute) {
     Objects.requireNonNull(db);
-    var artefacts = db.artefactTable().getAll(artefactId);
-    var instructionsReference = db.instructionTable().getAll(artefactId);
+    Objects.requireNonNull(reference);
+    Objects.requireNonNull(toCompute);
+    var instructionsReference = db.instructionTable().getAll(reference.id());
 
-    for (var artefact : artefacts) {
+    for (var artefact : toCompute) {
       var instruction = db.instructionTable().getAll(artefact.id());
       var result = Karp.rabinKarp(instructionsReference, instruction);
       var succeed = result.getValue();
       var percentage = Karp.average(succeed, instructionsReference.size());
-      db.cloneTable().insert(new CloneTable.CloneRow(artefactId, artefact.id(), (int)percentage));
+      db.cloneTable().insert(new CloneTable.CloneRow(reference.id(), artefact.id(), (int)percentage));
     }
   }
 }

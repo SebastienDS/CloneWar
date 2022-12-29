@@ -20,6 +20,7 @@ import io.helidon.webserver.Service;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 
@@ -71,8 +72,6 @@ public final class ApiService implements Service {
           try {
             System.out.println("Indexing artefact ... ");
             var indexedArtefact = CloneDetectors.indexArtefact(db, artefact);
-            System.out.println("Computing clones ... ");
-            CloneDetectors.computeClones(db, indexedArtefact.id());
 
             var json = toJson(indexedArtefact);
             response.status(Http.Status.OK_200).send(json);
@@ -105,8 +104,24 @@ public final class ApiService implements Service {
 
   private void listClones(ServerRequest request, ServerResponse response) throws IOException {
     var id = Integer.parseInt(request.path().param("id"));
-    var clones = db.cloneTable().getAll(id);
+
+    var availableClones = db.artefactTable().getAll(id);
     var reference = db.artefactTable().get(id);
+    var alreadyComputedClones = db.cloneTable().getAll(id);
+
+    var toCompute = availableClones.stream()
+        .filter(artefact -> alreadyComputedClones.stream().noneMatch(c -> c.artefact().id() == artefact.id()))
+        .toList();
+
+    List<Clones.Clone> clones;
+    if (toCompute.isEmpty()) {
+      clones = alreadyComputedClones;
+    } else {
+      System.out.println("Computing clones ... ");
+      CloneDetectors.computeClones(db, reference, toCompute);
+      clones = db.cloneTable().getAll(id); // refresh clones
+    }
+
     var json = toJson(new Clones(reference, clones));
     response.status(Http.Status.OK_200).send(json);
   }

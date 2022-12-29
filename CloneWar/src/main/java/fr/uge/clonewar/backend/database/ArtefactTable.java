@@ -107,5 +107,4 @@ public class ArtefactTable {
           return null;
         })).await();
   }
-
 }
