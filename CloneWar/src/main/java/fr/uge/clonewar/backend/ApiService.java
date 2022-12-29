@@ -69,7 +69,7 @@ public final class ApiService implements Service {
             System.out.println("Indexing artefact ... ");
             var indexedArtefact = CloneDetectors.indexArtefact(db, artefact);
             System.out.println("Computing clones ... ");
-            CloneDetectors.computeClones(db, indexedArtefact.id(), indexedArtefact.name());
+            CloneDetectors.computeClones(db, indexedArtefact.id());
 
             var json = toJson(indexedArtefact);
             response.status(Http.Status.OK_200).send(json);

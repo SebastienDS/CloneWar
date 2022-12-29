@@ -30,8 +30,8 @@ public class Karp {
     var dbClient = DbClient.create(Config.create().get("test.db"));
     var db = new Database(dbClient);
     db.instructionTable().flushBuffer();
-    var listHashDoc1 = db.instructionTable().getLineAndHash("cc1.jar");
-    var listHashDoc2 = db.instructionTable().getLineAndHash("cc.jar");
+    var listHashDoc1 = db.instructionTable().getAll(1);
+    var listHashDoc2 = db.instructionTable().getAll(2);
     var a = rabinKarp(listHashDoc1, listHashDoc2);
   }
 
