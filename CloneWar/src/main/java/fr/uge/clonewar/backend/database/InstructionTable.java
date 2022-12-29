@@ -11,8 +11,15 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 
+/**
+ * Represents an Instruction entity of the database.
+ */
 public class InstructionTable {
-
+  /**
+   * Represents a Row of the Instruction entity.
+   * @param instruction The instruction
+   * @param fileId the fileId
+   */
   public record InstructionRow(Instruction instruction, int fileId) {
     public InstructionRow {
       Objects.requireNonNull(instruction);
@@ -23,9 +30,13 @@ public class InstructionTable {
   private final DbClient dbClient;
   private final ArrayList<InstructionRow> buffer = new ArrayList<>();
 
-  public InstructionTable(DbClient dbclient) {
-    Objects.requireNonNull(dbclient);
-    this.dbClient = dbclient;
+  /**
+   * Creates an instance of the entity.
+   * @param dbClient The database connection
+   */
+  public InstructionTable(DbClient dbClient) {
+    Objects.requireNonNull(dbClient);
+    this.dbClient = dbClient;
     createTable();
   }
 
@@ -38,6 +49,10 @@ public class InstructionTable {
         }).await();
   }
 
+  /**
+   * Insert a row to the database.
+   * @param row The row to be inserted
+   */
   public void insert(InstructionRow row) {
     Objects.requireNonNull(row);
     dbClient.execute(exec -> exec.createInsert("INSERT INTO instruction(line, hash, fileId) VALUES (?, ?, ?)")
@@ -51,31 +66,11 @@ public class InstructionTable {
     })).await();
   }
 
-  public void insertAll(List<InstructionRow> rows) {
-    Objects.requireNonNull(rows);
-    if (rows.isEmpty()) {
-      throw new IllegalArgumentException("Require instructions");
-    }
-
-    var chunkSize = 25_000;
-    var size = rows.size();
-
-    var awaitables = IntStream.range(0, (size + chunkSize - 1) / chunkSize)
-        .mapToObj(i -> rows.subList(i * chunkSize, Math.min(chunkSize * (i + 1), size)))
-        .map(chunk -> chunk.stream()
-            .map(row -> "(" + row.instruction.line() + ", " + row.instruction.hash() + ", " + row.fileId + ")")
-            .collect(Collectors.joining(", "))
-        ).map(values ->
-            dbClient.execute(exec -> exec.insert("INSERT INTO instruction(line, hash, fileId) VALUES " + values))
-                .exceptionally((t -> {
-                  t.printStackTrace();
-                  return null;
-                }))
-        ).toList();
-
-    awaitables.forEach(CompletionAwaitable::await);
-  }
-
+  /**
+   * Insert a row to a buffer that will make a unique insertion when he will be full.
+   * Prevents database spamming due to massive insertions
+   * @param instruction The row to be inserted
+   */
   public void bufferedInsert(InstructionRow instruction) {
     Objects.requireNonNull(instruction);
 
@@ -86,6 +81,9 @@ public class InstructionTable {
     }
   }
 
+  /**
+   * Flush the buffer and insert instructions to database.
+   */
   public void flushBuffer() {
     if (buffer.isEmpty()) {
       return;
@@ -104,6 +102,11 @@ public class InstructionTable {
     buffer.clear();
   }
 
+  /**
+   * Gets instructions of a given filename.
+   * @param filename The filename
+   * @return The list of instructions
+   */
   public List<Instruction> getLineAndHash(String filename) {
     Objects.requireNonNull(filename);
     var query = """

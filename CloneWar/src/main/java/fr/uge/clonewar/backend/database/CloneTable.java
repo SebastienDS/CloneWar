@@ -7,11 +7,24 @@ import io.helidon.dbclient.DbClient;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * Represents a Clone entity of the database.
+ */
 public class CloneTable {
+  /**
+   * Represents a Row of the Clone entity.
+   * @param artefactId The id of the reference artefact
+   * @param cloneId The id of the artefact compared to
+   * @param percentage The percentage of similarity
+   */
   public record CloneRow(int artefactId, int cloneId, int percentage) {}
 
   private final DbClient dbClient;
 
+  /**
+   * Creates an instance of the entity.
+   * @param dbClient The database connection
+   */
   public CloneTable(DbClient dbClient) {
     Objects.requireNonNull(dbClient);
     this.dbClient = dbClient;
@@ -27,6 +40,10 @@ public class CloneTable {
         }).await();
   }
 
+  /**
+   * Insert a row to the database.
+   * @param clone The row to be inserted
+   */
   public void insert(CloneRow clone) {
     Objects.requireNonNull(clone);
     dbClient.execute(exec -> exec.createInsert("INSERT INTO clone(artefactId, cloneId, percentage) VALUES (?, ?, ?)")
@@ -40,6 +57,11 @@ public class CloneTable {
     })).await();
   }
 
+  /**
+   * Gets all clones for a given artefact id.
+   * @param id The id of an artefact
+   * @return The list of clones
+   */
   public List<Clones.Clone> getAll(int id) {
     var query = """
         SELECT cloneId, jarName, insertionDate, percentage

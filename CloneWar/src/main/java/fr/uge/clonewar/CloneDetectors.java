@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 public class CloneDetectors {
@@ -22,10 +21,9 @@ public class CloneDetectors {
     var artefactId = insertArtefact(db, jarName, now);
 
     var sources = ReadByteCode.extractSources(artefact.source());
-    var files = db.fileTable().insertAll(convertToRow(artefactId, sources));
-    var javaFiles = extractFilenames(sources);
+    var files = insertFiles(db, artefactId, sources);
 
-    insertInstructions(db, artefact, files, javaFiles);
+    insertInstructions(db, artefact, files);
     return new fr.uge.clonewar.backend.model.Artefact(artefactId, jarName, now);
   }
 
@@ -35,9 +33,21 @@ public class CloneDetectors {
     return artefactId;
   }
 
-  private static void insertInstructions(Database db, Artefact artefact, Map<String, Integer> files, Set<String> javaFiles) throws IOException {
+  private static Map<String, Integer> insertFiles(Database db, int artefactId, List<Map.Entry<String, String>> sources) {
+    return sources.stream()
+        .map(entry -> {
+          var file = ReadByteCode.extractExtension(entry.getKey());
+          return new FileTable.FileRow(file.getKey(), file.getValue(), entry.getValue(), artefactId);
+        })
+        .map(row -> {
+          var fileId = db.fileTable().insert(row);
+          return Map.entry(row.filename(), fileId);
+        }).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+  }
+
+  private static void insertInstructions(Database db, Artefact artefact, Map<String, Integer> files) throws IOException {
     var readByteCode = new ReadByteCode(artefact.main());
-    readByteCode.analyze(javaFiles);
+    readByteCode.analyze(files.keySet());
     readByteCode.forEach((f, instruction) -> {
       var filename = ReadByteCode.extractExtension(f);
       var fileId = files.get(filename.getKey());
@@ -49,21 +59,6 @@ public class CloneDetectors {
       db.instructionTable().bufferedInsert(row);
     });
     db.instructionTable().flushBuffer();
-  }
-  private static Set<String> extractFilenames(List<Map.Entry<String, String>> sources) {
-    return sources.stream()
-        .map(Map.Entry::getKey)
-        .map(file -> ReadByteCode.extractExtension(file).getKey())
-        .collect(Collectors.toSet());
-  }
-
-  private static List<FileTable.FileRow> convertToRow(int artefactId, List<Map.Entry<String, String>> sources) {
-    return sources.stream()
-        .map(entry -> {
-          var file = ReadByteCode.extractExtension(entry.getKey());
-          return new FileTable.FileRow(file.getKey(), file.getValue(), entry.getValue(), artefactId);
-        })
-        .toList();
   }
 
   public static void computeClones(Database db, int artefactId, String jarName) {
