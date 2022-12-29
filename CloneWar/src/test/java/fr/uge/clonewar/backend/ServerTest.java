@@ -8,6 +8,7 @@ import fr.uge.clonewar.backend.model.Clones;
 import fr.uge.clonewar.utils.JarBuilder;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
+import io.helidon.config.Config;
 import io.helidon.media.jsonp.JsonpSupport;
 import io.helidon.media.multipart.FileFormParams;
 import io.helidon.media.multipart.MultiPartSupport;
@@ -24,12 +25,13 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class ServerTest {
+  private static final Config config = Config.create().get("test");
   private static WebServer webServer;
   private static WebClient webClient;
 
   @BeforeAll
   public static void startServer() {
-    webServer = Server.startTestServer().await();
+    webServer = Server.startServer(config).await();
 
     webClient = WebClient.builder()
         .baseUri("http://localhost:" + webServer.port() + "/api")

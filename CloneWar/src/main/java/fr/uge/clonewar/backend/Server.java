@@ -1,14 +1,12 @@
 package fr.uge.clonewar.backend;
 
 import fr.uge.clonewar.backend.database.Database;
-import io.helidon.common.LogConfig;
 import io.helidon.common.reactive.Single;
 import io.helidon.config.Config;
 import io.helidon.dbclient.DbClient;
 import io.helidon.media.jsonp.JsonpSupport;
 import io.helidon.media.multipart.MultiPartSupport;
 import io.helidon.openapi.OpenAPISupport;
-import io.helidon.tracing.TracerBuilder;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.WebServer;
 import io.helidon.webserver.staticcontent.StaticContentSupport;
@@ -17,6 +15,12 @@ import java.util.Objects;
 
 public class Server {
 
+  /**
+   * Start the server.
+   * @param db The database instance
+   * @param config The server config
+   * @return The started server
+   */
   public static Single<WebServer> startServer(Database db, Config config) {
     Objects.requireNonNull(db);
     Objects.requireNonNull(config);
@@ -42,18 +46,14 @@ public class Server {
     return server;
   }
 
-  public static Single<WebServer> startServer() {
-    var config = Config.create();
+  /**
+   * Start the main server.
+   * @param config The server config
+   * @return The started server
+   */
+  public static Single<WebServer> startServer(Config config) {
+    Objects.requireNonNull(config);
     var dbClient = DbClient.create(config.get("db"));
-
-    var db = new Database(dbClient);
-    return startServer(db, config);
-  }
-
-  public static Single<WebServer> startTestServer() {
-    var config = Config.create();
-    var dbClient = DbClient.create(config.get("db-test"));
-
     var db = new Database(dbClient);
     return startServer(db, config);
   }

@@ -13,6 +13,9 @@ import io.helidon.webserver.BadRequestException;
 import io.helidon.webserver.NotFoundException;
 
 
+/**
+ * Represents a temporary directory.
+ */
 public final class FileStorage implements Closeable {
 
   private final Path storageDir;
@@ -27,10 +30,21 @@ public final class FileStorage implements Closeable {
     }
   }
 
+  /**
+   * Gets the directory path.
+   * @return The directory path
+   */
   public Path storageDir() {
     return storageDir;
   }
 
+
+  /**
+   * Create a temporary file
+   * @param filename The filename
+   * @return The created file's path
+   * @throws IllegalStateException if the storage has already been clean
+   */
   public Path create(String filename) {
     Objects.requireNonNull(filename);
     requireOpen();
@@ -46,22 +60,12 @@ public final class FileStorage implements Closeable {
     return file;
   }
 
-//  public Path lookup(String filename) {
-//    Objects.requireNonNull(filename);
-//    requireOpen();
-//    Path file = storageDir.resolve(filename);
-//    if (!file.getParent().equals(storageDir)) {
-//      throw new BadRequestException("Invalid file name");
-//    }
-//    if (!Files.exists(file)) {
-//      throw new NotFoundException("file not found");
-//    }
-//    if (!Files.isRegularFile(file)) {
-//      throw new BadRequestException("Not a file");
-//    }
-//    return file;
-//  }
-
+  /**
+   * Delete a file.
+   * @param path The file to delete
+   * @throws IOException if an I/O error occurs
+   * @throws IllegalStateException if the storage has already been clean
+   */
   public void delete(Path path) throws IOException {
     Objects.requireNonNull(path);
     requireOpen();
@@ -88,6 +92,11 @@ public final class FileStorage implements Closeable {
     }
   }
 
+  /**
+   * Close the storage and delete all created files.
+   * @throws IllegalStateException if the storage has already been clean
+   * @throws UncheckedIOException if an I/O error occurs
+   */
   @Override
   public void close() {
     requireOpen();

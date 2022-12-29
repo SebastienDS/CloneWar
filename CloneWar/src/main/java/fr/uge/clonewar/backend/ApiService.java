@@ -35,6 +35,10 @@ public final class ApiService implements Service {
     this.storage = storage;
   }
 
+  /**
+   * Define routes for the service.
+   * @param rules Server rules that contains routes
+   */
   @Override
   public void update(Routing.Rules rules) {
     rules.get("/", (req, res) -> res.send("Hello World"))
@@ -51,7 +55,7 @@ public final class ApiService implements Service {
   private static void interceptError(ServerRequest request, ServerResponse response, Handler consumer) {
     try {
       consumer.handle(request, response);
-    } catch (Throwable e) { // 😭🥺
+    } catch (Throwable e) {
       e.printStackTrace();
       response.send(e);
     }

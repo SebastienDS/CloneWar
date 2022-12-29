@@ -103,20 +103,18 @@ public class InstructionTable {
   }
 
   /**
-   * Gets instructions of a given filename.
-   * @param filename The filename
+   * Gets instructions of a given artefact.
    * @return The list of instructions
    */
-  public List<Instruction> getLineAndHash(String filename) {
-    Objects.requireNonNull(filename);
+  public List<Instruction> getAll(int artefactId) {
     var query = """
       SELECT line, hash
-      FROM file AS f
-      JOIN artefact AS a ON f.artefactId = a.id
-      JOIN instruction as i ON i.fileId = f.id
-      WHERE a.jarName = ?
+      FROM artefact AS a
+      JOIN file AS f ON a.id = f.artefactId
+      JOIN instruction AS i ON f.id = i.fileId
+      WHERE a.id = ?
       """;
-    return dbClient.execute(exec -> exec.query(query, filename))
+    return dbClient.execute(exec -> exec.query(query, artefactId))
         .map(dbRow -> new Instruction(
             dbRow.column("line").as(Integer.class),
             dbRow.column("hash").as(Integer.class))

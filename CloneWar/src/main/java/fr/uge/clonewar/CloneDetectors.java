@@ -11,6 +11,13 @@ import java.util.stream.Collectors;
 
 public class CloneDetectors {
 
+  /**
+   * Index artefact in the database
+   * @param db The database
+   * @param artefact The artefact to be indexed
+   * @return The artefact details
+   * @throws IOException if an I/O error occurs
+   */
   public static fr.uge.clonewar.backend.model.Artefact indexArtefact(Database db, Artefact artefact) throws IOException {
     Objects.requireNonNull(db);
     Objects.requireNonNull(artefact);
@@ -61,14 +68,18 @@ public class CloneDetectors {
     db.instructionTable().flushBuffer();
   }
 
-  public static void computeClones(Database db, int artefactId, String jarName) {
+  /**
+   * Computes indexed artefacts similarity.
+   * @param db The database
+   * @param artefactId The artefact reference
+   */
+  public static void computeClones(Database db, int artefactId) {
     Objects.requireNonNull(db);
-    Objects.requireNonNull(jarName);
     var artefacts = db.detailTable().getAll(artefactId);
-    var instructionsReference = db.instructionTable().getLineAndHash(jarName);
+    var instructionsReference = db.instructionTable().getAll(artefactId);
 
     for (var artefact : artefacts) {
-      var instruction = db.instructionTable().getLineAndHash(artefact.name());
+      var instruction = db.instructionTable().getAll(artefact.id());
       var result = Karp.rabinKarp(instructionsReference, instruction);
       var succeed = result.getValue();
       var percentage = Karp.average(succeed, instructionsReference.size());

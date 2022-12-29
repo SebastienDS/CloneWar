@@ -27,7 +27,7 @@ public class Karp {
 
   //pour les tests
   public static void main(String[] args) throws IOException {
-    var dbClient = DbClient.create(Config.create().get("db-test"));
+    var dbClient = DbClient.create(Config.create().get("test.db"));
     var db = new Database(dbClient);
     db.instructionTable().flushBuffer();
     var listHashDoc1 = db.instructionTable().getLineAndHash("cc1.jar");
