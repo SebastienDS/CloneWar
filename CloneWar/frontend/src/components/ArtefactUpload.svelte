@@ -9,6 +9,8 @@
 
   $: canSubmit = mainJar !== null && sourceJar != null;
 
+  let showLoader = false;
+
   const submit = () => {
     const formData = new FormData();
     formData.append(mainJar, mainJar, mainJar.name);
@@ -21,10 +23,12 @@
       body: formData
     }
 
+    showLoader = true;
     fetch("/api/analyze", options)
       .then(res => res.json())
       .then(json => {
         console.log(json);
+        showLoader = false;
         location.reload();
       })
       .catch(error => console.error(error))
@@ -42,6 +46,11 @@
   </div>
   
   <div class="m-3">
-    <button type="submit" class="button is-primary" on:click={submit} disabled="{canSubmit === false}">Submit</button>
+    {#if showLoader}
+      <div class="loader is-size-3"></div>
+    {/if}
+    {#if !showLoader}
+      <button type="submit" class="button is-primary" on:click={submit} disabled="{canSubmit === false}">Submit</button>
+    {/if}
   </div>
 </div>

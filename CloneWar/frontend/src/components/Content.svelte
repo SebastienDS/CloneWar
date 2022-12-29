@@ -6,6 +6,7 @@
   $: id = params.id;
 
   let showMore = false;
+  let showLoader = false;
   let reference = {
     id: 0,
     name: ""
@@ -14,12 +15,17 @@
   $: allClones = [];
 
   const fetchItems = (id) => {
+    showLoader = true;
+    showMore = false;
+    allClones = [];
+
     fetch("/api/clones/" + id)
     .then(res => res.json())
     .then(json => {
       console.log(json)
       reference = json.reference;
       allClones = json.clones;
+      showLoader = false;
     })
     .catch(error => console.error(error))
     return true;
@@ -36,8 +42,14 @@
   </div>
 
   <div class="row rows has-background-grey-light">
+    {#if showLoader}
+      <div class="row is-flex is-justify-content-center has-background-grey">
+        <div class="loader is-size-3 m-3"></div>
+      </div>
+    {/if}
+    
     {#each items as item}
-      <div class="row radius">
+      <div class="row separator">
         <div class="is-flex is-justify-content-space-around">
           <div class="is-flex is-justify-content-center is-align-items-center width">
             <ArtefactDetail item={item.artefact}/>
@@ -50,13 +62,15 @@
     {/each}
   </div>
 
-  {#if !showMore && allClones.length > items.length}
-    <div class="row has-text-centered has-background-grey space"><button on:click={e => showMore = true}>Afficher tout</button></div>
-  {/if}
+  <div class="row has-text-centered has-background-grey space">
+    {#if !showMore && allClones.length > items.length}
+      <button on:click={e => showMore = true}>Afficher tout</button>
+    {/if}
+  </div>
 </div>
 
 <style>
-  .radius {
+  .separator {
     border-bottom: 1px solid rgb(145, 142, 142);
   }
 
