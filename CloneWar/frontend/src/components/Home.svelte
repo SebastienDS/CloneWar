@@ -5,12 +5,14 @@
   import ArtefactList from "./ArtefactList.svelte";
   import ArtefactUpload from "./ArtefactUpload.svelte";
   import Content from "./Content.svelte";
+  import Diff from "./Diff.svelte";
   import GoBack from "./GoBack.svelte";
 
   
   const routes = {
     "/": ArtefactUpload,
     "/artefact/:id": Content,
+    "/diff/:referenceId/:cloneId": Diff,
     "*": GoBack
   }
 </script>

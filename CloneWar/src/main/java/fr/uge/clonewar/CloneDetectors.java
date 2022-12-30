@@ -2,11 +2,13 @@ package fr.uge.clonewar;
 
 
 import fr.uge.clonewar.backend.database.*;
+import fr.uge.clonewar.backend.database.ArtefactTable.ArtefactRow;
+import fr.uge.clonewar.backend.database.CloneTable.CloneRow;
+import fr.uge.clonewar.backend.database.FileTable.FileRow;
+import fr.uge.clonewar.backend.database.InstructionTable.InstructionRow;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class CloneDetectors {
@@ -25,7 +27,7 @@ public class CloneDetectors {
     var jarName = artefact.main().getFileName().toString();
     var now = System.currentTimeMillis();
 
-    var artefactId = db.artefactTable().insert(new ArtefactTable.ArtefactRow(jarName, now));
+    var artefactId = db.artefactTable().insert(new ArtefactRow(jarName, now));
 
     var sources = ReadByteCode.extractSources(artefact.source());
     var files = insertFiles(db, artefactId, sources);
@@ -38,7 +40,7 @@ public class CloneDetectors {
     return sources.stream()
         .map(entry -> {
           var file = ReadByteCode.extractExtension(entry.getKey());
-          return new FileTable.FileRow(file.getKey(), file.getValue(), entry.getValue(), artefactId);
+          return new FileRow(file.getKey(), file.getValue(), entry.getValue(), artefactId);
         })
         .map(row -> {
           var fileId = db.fileTable().insert(row);
@@ -56,7 +58,7 @@ public class CloneDetectors {
         return;
       }
 
-      var row = new InstructionTable.InstructionRow(instruction, fileId);
+      var row = new InstructionRow(instruction, fileId);
       db.instructionTable().bufferedInsert(row);
     });
     db.instructionTable().flushBuffer();
@@ -76,10 +78,22 @@ public class CloneDetectors {
 
     for (var artefact : toCompute) {
       var instruction = db.instructionTable().getAll(artefact.id());
-      var result = Karp.rabinKarp(instructionsReference, instruction);
-      var succeed = result.getValue();
-      var percentage = Karp.average(succeed, instructionsReference.size());
-      db.cloneTable().insert(new CloneTable.CloneRow(reference.id(), artefact.id(), (int)percentage));
+      var result = Karp.rabinKarp(instruction, instructionsReference);
+      var percentage = Karp.average(result.getValue(), instruction.size());
+
+      db.cloneTable().insert(new CloneRow(reference.id(), artefact.id(), (int)percentage));
+      insertDiff(db, result.getKey());
     }
+  }
+
+  private static void insertDiff(Database db, HashMap<InstructionRow, Set<InstructionRow>> result) {
+    result.entrySet()
+        .stream()
+        .flatMap(e -> {
+          var ref = e.getKey();
+          return e.getValue()
+              .stream()
+              .map(i -> new DiffTable.DiffRow(ref.fileId(), i.fileId(), ref.instruction().line(), i.instruction().line()));
+        }).forEach(db.diffTable()::insert);
   }
 }

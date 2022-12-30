@@ -4,8 +4,8 @@
 
   export let item;
 
-
-  $: isMyArtefact = $location.endsWith(`/${item.id}`);
+  $: match = $location.match(/\w+\/(\d+)/)
+  $: isMyArtefact = match === null ? false : parseInt(match[1], 10) === item.id;
   $: activeClass = isMyArtefact ? "active" : "";
 </script>
 

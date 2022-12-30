@@ -1,6 +1,7 @@
 package fr.uge.clonewar;
 
 import fr.uge.clonewar.backend.database.Database;
+import fr.uge.clonewar.backend.database.InstructionTable.InstructionRow;
 import io.helidon.config.Config;
 import io.helidon.dbclient.DbClient;
 
@@ -9,20 +10,19 @@ import java.util.*;
 
 public class Karp {
 
-  public static Map.Entry<HashMap<Integer, Set<Integer>>, Integer> rabinKarp(List<Instruction> listTuple1, List<Instruction> listTuple2) {
+  public static Map.Entry<HashMap<InstructionRow, Set<InstructionRow>>, Integer> rabinKarp(List<InstructionRow> listTuple1, List<InstructionRow> listTuple2) {
     var countSameInstr = 0;
-    var mapIndex = new HashMap<Integer, Set<Integer>>();
+    var mapIndex = new HashMap<InstructionRow, Set<InstructionRow>>();
     for (var tuple1: listTuple1) {
-      for(var tuple2: listTuple2){
-        if(tuple1.hash() == tuple2.hash()){
+      for (var tuple2: listTuple2) {
+        if (tuple1.instruction().hash() == tuple2.instruction().hash()) {
           countSameInstr += 1;
-          mapIndex.computeIfAbsent(tuple2.line(), integer -> new HashSet<>()).add(tuple1.line());
+          mapIndex.computeIfAbsent(tuple2, integer -> new HashSet<>()).add(tuple1);
           break;
         }
       }
     }
     return Map.entry(mapIndex, countSameInstr);
-
   }
 
   //pour les tests

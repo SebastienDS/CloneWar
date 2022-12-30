@@ -1,14 +1,12 @@
 package fr.uge.clonewar.backend.database;
 
 import fr.uge.clonewar.Instruction;
-import io.helidon.common.reactive.CompletionAwaitable;
 import io.helidon.dbclient.DbClient;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 
 /**
@@ -106,18 +104,23 @@ public class InstructionTable {
    * Gets instructions of a given artefact.
    * @return The list of instructions
    */
-  public List<Instruction> getAll(int artefactId) {
+  public List<InstructionRow> getAll(int artefactId) {
     var query = """
-      SELECT line, hash
+      SELECT line, hash, fileId
       FROM artefact AS a
       JOIN file AS f ON a.id = f.artefactId
       JOIN instruction AS i ON f.id = i.fileId
       WHERE a.id = ?
       """;
     return dbClient.execute(exec -> exec.query(query, artefactId))
-        .map(dbRow -> new Instruction(
-            dbRow.column("line").as(Integer.class),
-            dbRow.column("hash").as(Integer.class))
+        .map(dbRow ->
+            new InstructionRow(
+              new Instruction(
+                dbRow.column("line").as(Integer.class),
+                dbRow.column("hash").as(Integer.class)
+              ),
+              dbRow.column("fileId").as(Integer.class)
+            )
         ).collectList()
         .exceptionally((t -> {
             t.printStackTrace();

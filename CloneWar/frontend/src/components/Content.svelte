@@ -1,4 +1,5 @@
 <script>
+  import { link } from 'svelte-spa-router';
   import ArtefactDetail from "./ArtefactDetail.svelte";
 
   export let params;
@@ -49,16 +50,18 @@
     {/if}
     
     {#each items as item}
-      <div class="row separator">
-        <div class="is-flex is-justify-content-space-around">
-          <div class="is-flex is-justify-content-center is-align-items-center width">
-            <ArtefactDetail item={item.artefact}/>
-          </div>
-          <div class="is-flex is-justify-content-center is-align-items-center width">
-            {item.percentage} %
+      <a href="/diff/{reference.id}/{item.artefact.id}" use:link class="has-text-black">
+        <div class="row separator">
+          <div class="is-flex is-justify-content-space-around">
+            <div class="is-flex is-justify-content-center is-align-items-center width">
+              <ArtefactDetail item={item.artefact}/>
+            </div>
+            <div class="is-flex is-justify-content-center is-align-items-center width">
+              {item.percentage} %
+            </div>
           </div>
         </div>
-      </div>
+      </a>
     {/each}
   </div>
 

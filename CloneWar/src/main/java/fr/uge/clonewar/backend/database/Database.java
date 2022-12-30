@@ -12,6 +12,7 @@ public class Database {
   private final FileTable fileTable;
   private final InstructionTable instructionTable;
   private final CloneTable cloneTable;
+  private final DiffTable diffTable;
 
   /**
    * Creates an instance of the database.
@@ -24,6 +25,7 @@ public class Database {
     fileTable = new FileTable(dbClient);
     instructionTable = new InstructionTable(dbClient);
     cloneTable = new CloneTable(dbClient);
+    diffTable = new DiffTable(dbClient);
   }
 
   /**
@@ -58,4 +60,11 @@ public class Database {
     return cloneTable;
   }
 
+  /**
+   * Gets the diff table.
+   * @return The diff table
+   */
+  public DiffTable diffTable() {
+    return diffTable;
+  }
 }

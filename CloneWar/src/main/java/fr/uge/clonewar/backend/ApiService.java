@@ -1,9 +1,9 @@
 package fr.uge.clonewar.backend;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.uge.clonewar.Artefact;
 import fr.uge.clonewar.CloneDetectors;
+import fr.uge.clonewar.Utils;
 import fr.uge.clonewar.backend.database.Database;
 import fr.uge.clonewar.backend.model.Clones;
 import io.helidon.common.configurable.ThreadPoolSupplier;
@@ -46,7 +46,8 @@ public final class ApiService implements Service {
     rules.get("/", (req, res) -> res.send("Hello World"))
         .post("/analyze", (req, res) -> interceptError(req, res, this::analyze))
         .get("/artefacts", (req, res) -> interceptError(req, res, this::listArtefacts))
-        .get("/clones/{id}", (req, res) -> interceptError(req, res, this::listClones));
+        .get("/clones/{id}", (req, res) -> interceptError(req, res, this::listClones))
+        .get("/diff/{reference}/{clone}",  (req, res) -> interceptError(req, res, this::diff));
   }
 
   @FunctionalInterface
@@ -73,7 +74,7 @@ public final class ApiService implements Service {
             System.out.println("Indexing artefact ... ");
             var indexedArtefact = CloneDetectors.indexArtefact(db, artefact);
 
-            var json = toJson(indexedArtefact);
+            var json = Utils.toJson(indexedArtefact);
             response.status(Http.Status.OK_200).send(json);
           } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -98,7 +99,7 @@ public final class ApiService implements Service {
 
   private void listArtefacts(ServerRequest request, ServerResponse response) throws IOException {
     var artefacts = db.artefactTable().getAll();
-    var json = toJson(artefacts);
+    var json = Utils.toJson(artefacts);
     response.status(Http.Status.OK_200).send(json);
   }
 
@@ -122,13 +123,17 @@ public final class ApiService implements Service {
       clones = db.cloneTable().getAll(id); // refresh clones
     }
 
-    var json = toJson(new Clones(reference, clones));
+    var json = Utils.toJson(new Clones(reference, clones));
     response.status(Http.Status.OK_200).send(json);
   }
 
-  private static String toJson(Object object) throws JsonProcessingException {
-    var mapper = new ObjectMapper();
-    return mapper.writeValueAsString(object);
+  private void diff(ServerRequest request, ServerResponse response) throws JsonProcessingException {
+    var referenceId = Integer.parseInt(request.path().param("reference"));
+    var cloneId = Integer.parseInt(request.path().param("clone"));
+
+    var diff = db.diffTable().getDiff(referenceId, cloneId);
+    var json = Utils.toJson(diff);
+    response.status(Http.Status.OK_200).send(json);
   }
 
 }

@@ -32,8 +32,8 @@ public class CloneTable {
   }
 
   private void createTable() {
-    dbClient.execute(exec -> exec.update("CREATE TABLE IF NOT EXISTS clone(artefactId INTEGER, cloneId INTEGER," +
-            "percentage INTEGER, PRIMARY KEY(artefactId, cloneId))"))
+    dbClient.execute(exec -> exec.update("CREATE TABLE IF NOT EXISTS clone(id INTEGER, artefactId INTEGER, cloneId INTEGER," +
+            "percentage INTEGER, PRIMARY KEY(id))"))
         .exceptionally(t -> {
           System.err.println(t.getMessage());
           return null;
@@ -59,26 +59,27 @@ public class CloneTable {
 
   /**
    * Gets all clones for a given artefact id.
-   * @param id The id of an artefact
+   * @param artefactId The id of an artefact
    * @return The list of clones
    */
-  public List<Clones.Clone> getAll(int id) {
+  public List<Clones.Clone> getAll(int artefactId) {
     var query = """
         SELECT cloneId, jarName, insertionDate, percentage
-        FROM clone
-        JOIN artefact ON id = cloneId
+        FROM clone AS c
+        JOIN artefact AS a ON a.id = cloneId
         WHERE artefactId = ?
         ORDER BY percentage DESC, jarName ASC
         """;
-    return dbClient.execute(exec -> exec.query(query, id))
-        .map(dbRow -> new Clones.Clone(
-              new Artefact(
-                dbRow.column("cloneId").as(Integer.class),
-                dbRow.column("jarName").as(String.class),
-                dbRow.column("insertionDate").as(Long.class)
-              ),
-              dbRow.column("percentage").as(Integer.class)
-            )
+    return dbClient.execute(exec -> exec.query(query, artefactId))
+        .map(dbRow ->
+          new Clones.Clone(
+            new Artefact(
+              dbRow.column("cloneId").as(Integer.class),
+              dbRow.column("jarName").as(String.class),
+              dbRow.column("insertionDate").as(Long.class)
+            ),
+            dbRow.column("percentage").as(Integer.class)
+          )
         ).collectList()
         .exceptionally((t -> {
           t.printStackTrace();

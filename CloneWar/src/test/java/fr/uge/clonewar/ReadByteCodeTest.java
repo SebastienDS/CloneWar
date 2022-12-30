@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.util.stream.IntStream;
+import java.util.List;
 
 
 public class ReadByteCodeTest {
@@ -97,7 +97,7 @@ public class ReadByteCodeTest {
       var indexedArtefact2 = CloneDetectors.indexArtefact(db, artefact2);
       var l1 = db.instructionTable().getAll(indexedArtefact.id());
       var l2 = db.instructionTable().getAll(indexedArtefact2.id());
-      Assertions.assertEquals(100., Karp.average(Karp.rabinKarp(l1, l2).getValue(), l1.size()));
+      Assertions.assertEquals(100., Karp.average(Karp.rabinKarp(l2, l1).getValue(), l2.size()));
     }
   }
 
@@ -149,7 +149,66 @@ public class ReadByteCodeTest {
       var l1 = db.instructionTable().getAll(indexedArtefact.id());
       var l2 = db.instructionTable().getAll(indexedArtefact2.id());
 
-      Assertions.assertTrue(Karp.average(Karp.rabinKarp(l1, l2).getValue(), l1.size()) < 15);
+      Assertions.assertTrue(Karp.average(Karp.rabinKarp(l2, l1).getValue(), l2.size()) < 15);
+    }
+  }
+
+  @Test
+  public void testDiff() throws IOException {
+    try (var storage = new FileStorage()) {
+      var jar = new JarBuilder(storage.storageDir(), "Test");
+      jar.addFile("fr.uge.test.Test",
+          """
+          package fr.uge.test;
+
+          public class Test {
+            public static void main(String[] args) {
+              System.out.println(10);
+              System.out.println(10);
+              System.out.println(10);
+              System.out.println(10);
+            }
+          }
+          """);
+      var artefact = jar.get();
+
+      var jar2 = new JarBuilder(storage.storageDir(), "Test2");
+      jar2.addFile("fr.uge.test.Test2",
+          """
+              package fr.uge.test;
+
+              public class Test2 {
+                public static void main(String[] args) {
+                  System.out.println(10);
+                  System.out.println(10);
+                  System.out.println(10);
+                  System.out.println(10);
+                }
+              }
+              """);
+      jar2.addFile("fr.uge.test.Test3",
+          """
+              package fr.uge.test;
+
+              public class Test3 {
+                public static void main(String[] args) {
+                  System.out.println(10);
+                  System.out.println(10);
+                  System.out.println(10);
+                  System.out.println(10);
+                }
+              }
+              """);
+      var artefact2 = jar2.get();
+
+      var indexedArtefact = CloneDetectors.indexArtefact(db, artefact);
+      var indexedArtefact2 = CloneDetectors.indexArtefact(db, artefact2);
+
+      CloneDetectors.computeClones(db, indexedArtefact, List.of(indexedArtefact2));
+
+      var diff = db.diffTable().getDiff(indexedArtefact.id(), indexedArtefact2.id());
+      var json = Utils.toJsonIndented(diff);
+      System.out.println(json);
     }
   }
 }
