@@ -10,11 +10,17 @@ import java.util.*;
 
 public class Karp {
 
-  public static Map.Entry<HashMap<InstructionRow, Set<InstructionRow>>, Integer> rabinKarp(List<InstructionRow> listTuple1, List<InstructionRow> listTuple2) {
+  /**
+   * Perform the Rabin Karp algorithm.
+   * @param other Instructions
+   * @param reference The reference
+   * @return A tuple of matched lines and number of same instructions
+   */
+  public static Map.Entry<HashMap<InstructionRow, Set<InstructionRow>>, Integer> rabinKarp(List<InstructionRow> other, List<InstructionRow> reference) {
     var countSameInstr = 0;
     var mapIndex = new HashMap<InstructionRow, Set<InstructionRow>>();
-    for (var tuple1: listTuple1) {
-      for (var tuple2: listTuple2) {
+    for (var tuple1: other) {
+      for (var tuple2: reference) {
         if (tuple1.instruction().hash() == tuple2.instruction().hash()) {
           countSameInstr += 1;
           mapIndex.computeIfAbsent(tuple2, integer -> new HashSet<>()).add(tuple1);
@@ -25,16 +31,12 @@ public class Karp {
     return Map.entry(mapIndex, countSameInstr);
   }
 
-  //pour les tests
-  public static void main(String[] args) throws IOException {
-    var dbClient = DbClient.create(Config.create().get("test.db"));
-    var db = new Database(dbClient);
-    db.instructionTable().flushBuffer();
-    var listHashDoc1 = db.instructionTable().getAll(1);
-    var listHashDoc2 = db.instructionTable().getAll(2);
-    var a = rabinKarp(listHashDoc1, listHashDoc2);
-  }
-
+  /**
+   * Gets the average between succeed and total values.
+   * @param succeed succeed number
+   * @param total total number
+   * @return The average
+   */
   public static double average(int succeed, int total){
     return succeed * 100. / total;
   }

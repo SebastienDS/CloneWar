@@ -15,7 +15,7 @@ import java.util.stream.Stream;
 
 public class ReadByteCode {
 
-  public record Tuple(int line, String opcode) {}
+  private record Tuple(int line, String opcode) {}
 
   private final HashMap<String, TreeMap<Integer, List<String>>> files = new HashMap<>();
   private int line;
@@ -26,6 +26,10 @@ public class ReadByteCode {
     this.jar = jar;
   }
 
+  /**
+   * Performs an action for each element of analyzed instructions.
+   * @param consumer The action to perform on the instruction
+   */
   public void forEach(BiConsumer<? super String, ? super Instruction> consumer) {
     Objects.requireNonNull(consumer);
     forEachIterator((f, iterator) ->
@@ -60,10 +64,11 @@ public class ReadByteCode {
         .collect(Collectors.joining("\n"));
   }
 
-  public Path jar() {
-    return jar;
-  }
-
+  /**
+   * Performs an analysis over the main jar to extract instructions.
+   * @param javaFiles The java files used to match with right class files
+   * @throws IOException if an I/O error occurs
+   */
   public void analyze(Set<String> javaFiles) throws IOException {
     Objects.requireNonNull(javaFiles);
 
@@ -336,6 +341,11 @@ public class ReadByteCode {
     };
   }
 
+  /**
+   * Extracts the extension from the filename.
+   * @param filename The filename
+   * @return Tuple of filename without extension and the extension
+   */
   public static Map.Entry<String, String> extractExtension(String filename) {
     var extensionIndex = filename.indexOf('.');
     var extension = filename.substring(extensionIndex);
@@ -347,6 +357,12 @@ public class ReadByteCode {
     return Map.entry(className, extension);
   }
 
+  /**
+   * Extract source files from the source jar.
+   * @param jar The source jar
+   * @return List of Tuple that contains filename linked with content
+   * @throws IOException if an I/O error occurs
+   */
   public static List<Map.Entry<String, String>> extractSources(Path jar) throws IOException {
     var finder = ModuleFinder.of(jar);
     var moduleReference = finder.findAll().stream().findFirst().orElseThrow();

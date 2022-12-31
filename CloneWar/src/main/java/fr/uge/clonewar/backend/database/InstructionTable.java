@@ -48,23 +48,6 @@ public class InstructionTable {
   }
 
   /**
-   * Insert a row to the database.
-   * @param row The row to be inserted
-   */
-  public void insert(InstructionRow row) {
-    Objects.requireNonNull(row);
-    dbClient.execute(exec -> exec.createInsert("INSERT INTO instruction(line, hash, fileId) VALUES (?, ?, ?)")
-        .addParam(row.instruction.line())
-        .addParam(row.instruction.hash())
-        .addParam(row.fileId)
-        .execute()
-    ).exceptionally((t -> {
-      System.err.println(t.getMessage());
-      return null;
-    })).await();
-  }
-
-  /**
    * Insert a row to a buffer that will make a unique insertion when he will be full.
    * Prevents database spamming due to massive insertions
    * @param instruction The row to be inserted
